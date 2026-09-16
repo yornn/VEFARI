@@ -1,0 +1,12 @@
+{
+    "name": "vefari",
+    "version": "0.4.0",
+    "private": true,
+    "type": "module",
+    "license": "AGPL-3.0-or-later",
+    "scripts": {
+        "test": "node --test",
+        "test:browser": "node scripts/browser-smoke.mjs",
+        "check": "node --check index.js && node --check wardrobe.js && node --check images.js && node --check integration.js && node --check storage.js && node --check prompt.js && node --check ids.js && node --check icons.js && node --check window.js && node --check transfer.js"
+    }
+}

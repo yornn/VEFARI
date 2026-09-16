@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>VEFARI browser smoke test</title>
+    <style>
+        :root { --SmartThemeBodyColor: #dedbd3; --SmartThemeBorderColor: #56534d; --SmartThemeBlurTintColor: #242526; }
+        body { background: #17191a; color: #dedbd3; font: 16px system-ui; }
+        button, input, select, textarea { font: inherit; }
+        .text_pole { width: 100%; border: 1px solid #56534d; border-radius: 5px; background: #161819; color: inherit; padding: 8px; margin: 5px 0; }
+        .menu_button { border: 1px solid #56534d; border-radius: 5px; background: #303132; color: inherit; padding: 6px 9px; }
+        dialog::backdrop { background: #0009; }
+        .popup { border: 1px solid #56534d; border-radius: 10px; color: inherit; }
+        .popup .popup-body { display: flex; flex-direction: column; overflow: hidden; width: min(100%, 100vw); height: 100%; padding: 1px; }
+        .popup .popup-content { margin-top: 10px; padding: 0 8px; overflow: hidden; flex-grow: 1; }
+        #test_result { white-space: pre-wrap; font-size: 11px; }
+    </style>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div id="extensions_settings2"></div>
+    <div id="extensions_settings"></div>
+    <div id="extensionsMenu"></div>
+    <textarea id="send_textarea" aria-label="Сообщение"></textarea>
+    <pre id="test_result" data-result="running">Running…</pre>
+    <script type="module">
+        const handlers = new Map();
+        const prompts = new Map();
+        const errors = [];
+        const results = [];
+        let saveCount = 0;
+        let confirmResult = true;
+        window.addEventListener('error', event => errors.push(event.message));
+        window.addEventListener('unhandledrejection', event => errors.push(String(event.reason)));
+        // Contract double for ST Popup, using a real browser dialog and its focus trap.
+        class TestPopup {
+            constructor(content, type, input, options) {
+                this.options = options;
+                this.dlg = document.createElement('dialog');
+                this.dlg.className = 'popup';
+                const body = document.createElement('div');
+                body.className = 'popup-body';
+                const wrapper = document.createElement('div');
+                wrapper.className = 'popup-content';
+                wrapper.append(content);
+                body.append(wrapper);
+                this.dlg.append(body);
+                this.dlg.addEventListener('cancel', event => { event.preventDefault(); void this.complete(null); });
+            }
+            show() {
+                const result = new Promise(resolve => { this.resolve = resolve; });
+                document.body.append(this.dlg);
+                this.dlg.showModal();
+                this.options.onOpen?.(this);
+                return result;
+            }
+            async complete(result) {
+                if (this.options.onClosing && !await this.options.onClosing(this)) return;
+                await this.options.onClose?.(this);
+                this.dlg.close();
+                this.dlg.remove();
+                this.resolve(result);
+            }
+        }
+        const context = {
+            Popup: TestPopup, POPUP_TYPE: { TEXT: 1 }, POPUP_RESULT: { CANCELLED: null },
+            extensionSettings: {}, characterId: 0, groupId: null, name1: 'Player', name2: 'Alice',
+            characters: [{ avatar: 'alice.png', name: 'Alice' }, { avatar: 'bob.png', name: 'Bob' }],
+            eventTypes: { APP_READY: 'ready', CHAT_CHANGED: 'chat', GENERATION_STARTED: 'generate', GENERATION_AFTER_COMMANDS: 'commands' },
+            eventSource: {
+                on(event, handler) { if (!handlers.has(event)) handlers.set(event, []); handlers.get(event).push(handler); },
+                removeListener() {},
+            },
+            saveSettingsDebounced() { saveCount++; },
+            getRequestHeaders() { return { 'Content-Type': 'application/json', 'X-CSRF-Token': 'smoke-test' }; },
+            setExtensionPrompt(key, ...value) { prompts.set(key, value); },
+        };
+        window.SillyTavern = { getContext: () => context };
+        window.jQuery = callback => callback();
+        window.toastr = { error: message => errors.push(message) };
+        window.confirm = () => confirmResult;
+        const emit = event => { for (const callback of handlers.get(event) || []) callback(); };
+        const wardrobe = () => document.getElementById('vefari_host')?.shadowRoot;
+        const field = id => wardrobe()?.getElementById(`vefari_${id}`) || document.getElementById(`vefari_${id}`);
+        const prompt = () => prompts.get('vefari_outfit')?.[0] || '';
+        const check = (condition, message) => {
+            if (!condition) throw new Error(message);
+            results.push(message);
+            document.getElementById('test_result').textContent = results.join('\n');
+        };
+        const wait = async condition => {
+            for (let i = 0; i < 200; i++) {
+                if (condition()) return;
+                await new Promise(resolve => setTimeout(resolve, 20));
+            }
+            throw new Error('Timed out waiting for UI. ' + errors.join('; '));
+        };
+        const settle = () => new Promise(resolve => setTimeout(resolve, 25));
+        const idle = () => wait(() => !field('controls').inert);
+        const open = async () => { field('menu').click(); await wait(() => document.querySelector('.vefari_popup[open]')); };
+        const change = (id, value) => {
+            field(id).value = value;
+            field(id).dispatchEvent(new Event('change', { bubbles: true }));
+        };
+        const input = (id, value) => {
+            field(id).value = value;
+            field(id).dispatchEvent(new Event('input', { bubbles: true }));
+        };
+        const click = async (action, id) => {
+            const control = action === 'equip'
+                ? wardrobe().querySelector(`.vefari_card[data-id="${id}"]`)
+                : [...wardrobe().querySelectorAll('button[data-action]')]
+                    .find(button => button.dataset.action === action && button.dataset.id === id);
+            if (!control) throw new Error(`Missing control ${action}: ${id}`);
+            control.click();
+            await idle();
+        };
+        const save = async () => {
+            field('form').requestSubmit();
+            await idle();
+            if (field('status').dataset.error === 'true') throw new Error(field('status').textContent);
+        };
+        try {
+            await import('/index.js');
+            await wait(() => window.vefari && field('menu'));
+            check(!document.getElementById('extensions_settings2').childElementCount && !document.getElementById('extensions_settings').childElementCount, 'Nothing is mounted in the top extension settings');
+            check(field('menu').querySelector('svg path') && field('menu').textContent === 'VEFARI', 'Wand menu contains VEFARI and its original tunic SVG');
+            check(!field('window') && !prompt(), 'Window stays detached until the wand item is clicked');
+            emit('ready');
+            emit('ready');
+            check(document.querySelectorAll('#vefari_menu').length === 1, 'App-ready events do not duplicate the menu item');
+            await open();
+            field('menu').click();
+            check(document.querySelectorAll('.vefari_popup').length === 1, 'Repeated opening never duplicates the dialog');
+            check(field('tab_user').getAttribute('aria-selected') === 'true' && field('settings_panel').hidden && field('editor_panel').hidden, 'Window opens on User collection; settings and editor are hidden');
+            check(field('context').textContent === '' && field('tab_user_name').textContent === 'Player' && field('tab_bot_name').textContent === 'Alice', 'Tabs show dynamic participant names without duplicate context text');
+            check(wardrobe() && !document.getElementById('vefari_window'), 'Wardrobe content is isolated inside Shadow DOM');
+            check(wardrobe().activeElement === field('tab_user'), 'Opening focuses the selected tab inside Shadow DOM');
+            const appearance = () => [field('window'), field('tab_user'), field('filter'), field('name'), field('enabled'), field('add'), document.querySelector('.vefari_popup')].map(element => {
+                const style = getComputedStyle(element);
+                return ['color', 'backgroundColor', 'backgroundImage', 'fontFamily', 'fontSize', 'borderRadius', 'width', 'padding', 'filter', 'textShadow'].map(key => style[key]);
+            });
+            // Wait for swap fonts before comparing widths, but never require network access.
+            await Promise.race([document.fonts.ready, new Promise(resolve => setTimeout(resolve, 1500))]);
+            const originalAppearance = JSON.stringify(appearance());
+            const hostileTheme = document.createElement('style');
+            hostileTheme.textContent = `
+                :root { --SmartThemeBodyColor: magenta; --SmartThemeBlurTintColor: white; --vefari-accent: lime; }
+                body { font-size: 32px; font-family: fantasy; color: magenta; }
+                .popup, .popup .popup-body, .popup .popup-content, #vefari_host,
+                #vefari_window, #vefari_window *, button, input, select, textarea {
+                    background: hotpink !important; color: lime !important; border-radius: 60px !important;
+                    font: 32px fantasy !important; padding: 40px !important; width: 100% !important;
+                    filter: sepia(1) !important; text-shadow: 4px 4px red !important;
+                }
+            `;
+            document.head.append(hostileTheme);
+            const themedAppearance = JSON.stringify(appearance());
+            if (themedAppearance !== originalAppearance) throw new Error(`Theme isolation mismatch: before ${originalAppearance}; after ${themedAppearance}`);
+            check(true, 'Aggressive theme CSS and important rules cannot restyle wardrobe content or its shell');
+            hostileTheme.remove();
+            check(getComputedStyle(field('window')).backgroundColor === 'rgb(17, 21, 25)', 'Wardrobe has its own opaque charcoal background');
+            check(getComputedStyle(field('title')).fontFamily.includes('Cinzel') && getComputedStyle(field('editor_title')).fontFamily.includes('Cormorant Garamond') && getComputedStyle(field('window')).fontFamily.includes('Golos Text'), 'Typography separates the brand, Cyrillic headings and readable controls');
+            check(field('tab_user').getBoundingClientRect().width < 160 && field('filter').getBoundingClientRect().width <= 200, 'Tabs and category filter remain compact instead of filling the panel');
+            const equippedBar = wardrobe().getElementById('vefari_equipped_bar');
+            const barRect = equippedBar.getBoundingClientRect();
+            const windowRect = field('window').getBoundingClientRect();
+            check(Math.abs(barRect.bottom - windowRect.bottom) < 1 && Math.abs(barRect.left - windowRect.left) < 1 && Math.abs(barRect.right - windowRect.right) < 1, 'Equipped section is pinned to the full-width bottom of the window');
+            check(field('add').textContent.trim() === '' && field('import').type === 'button', 'Add is an icon button with an import placeholder beside it');
+            check(!wardrobe().querySelector('.vefari_filter_label') && wardrobe().getElementById('vefari_filter'), 'Category filter is a bare select without a text label');
+            field('settings_toggle').click();
+            check(!field('settings_panel').hidden && field('collection_panel').hidden && field('editor_panel').hidden, 'Top-right settings icon opens only settings');
+            check(!field('settings_panel').querySelector('#vefari_form'), 'Item creation form is not part of settings');
+            check(field('settings_panel').scrollWidth <= field('settings_panel').clientWidth + 1, 'Settings fit the viewport without horizontal scrolling');
+            field('back').click();
+            field('add').click();
+            check(field('settings_panel').hidden && !field('editor_panel').hidden && field('collection_panel').hidden, 'Add opens a separate editor screen');
+            check(field('editor_panel').scrollWidth <= field('editor_panel').clientWidth + 1 && field('form').scrollWidth <= field('form').clientWidth + 1, 'Editor fits the viewport without horizontal scrolling');
+            check(field('audience').value === 'user', 'New item defaults to the active User collection');
+            input('name', '<img src=x onerror="window.xssExecuted=true">');
+            input('description', 'A blue wool coat');
+            await save();
+            const coat = context.extensionSettings.vefari.items[0];
+            check(coat.imagePath === '' && coat.audiences.join() === 'user', 'Text-only item saves to User without uploading');
+            check(!window.xssExecuted && !field('items').querySelector('img'), 'Item names are rendered as text, not executable HTML');
+            check(field('items').querySelector('.vefari_card').getBoundingClientRect().width <= 280, 'A single wardrobe card does not stretch across the collection');
+            const placeholder = field('items').querySelector('.vefari_text_only').getBoundingClientRect();
+            check(placeholder.height >= 150 && placeholder.width < placeholder.height, 'Text-only cards use a larger vertical decorative placeholder');
+            check(field('items').querySelector('[data-action="edit"]').getAttribute('aria-label').includes(coat.name), 'Compact icon actions retain accessible item-specific labels');
+            check(field('status').textContent === '', 'Saving an item leaves the status line empty');
+            await click('equip', coat.id);
+            const wornCoat = [...field('items').querySelectorAll('.vefari_card')].find(card => card.textContent.includes(coat.name));
+            check(wornCoat.dataset.worn === 'true' && wornCoat.getAttribute('aria-pressed') === 'true' && !wornCoat.querySelector('button[data-action="equip"]') && !wornCoat.textContent.includes('Надето'), 'Active item is indicated only by card highlighting');
+            check(prompt() === '[OUTFIT: Player is currently wearing: FULL: A blue wool coat.]', 'User item is injected as a compact bracketed block under the current persona name');
+            await click('equip', coat.id);
+            check(prompt() === '', 'Clicking a worn card unequips it');
+            await click('equip', coat.id);
+            field('tab_bot').click();
+            check(!field('items').querySelector('.vefari_card'), 'Char tab does not show User-only clothes');
+            field('tab_bot').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+            check(field('tab_user').getAttribute('aria-selected') === 'true', 'Arrow keys switch tabs with accessible selection state');
+            await click('edit', coat.id);
+            change('audience', 'both');
+            input('description', 'A green wool coat');
+            await save();
+            field('tab_bot').click();
+            await click('equip', coat.id);
+            check(prompt() === '[OUTFIT: Alice is currently wearing: FULL: A green wool coat.]\n[OUTFIT: Player is currently wearing: FULL: A green wool coat.]', 'Shared item produces separate bracketed blocks for both participants');
+            field('settings_toggle').click();
+            field('enabled').checked = false;
+            field('enabled').dispatchEvent(new Event('change'));
+            await idle();
+            check(!prompt() && (await window.vefari.getImageReferences()).length === 0, 'Settings switch clears injection and references');
+            field('enabled').checked = true;
+            field('enabled').dispatchEvent(new Event('change'));
+            await idle();
+            field('back').click();
+            context.characterId = 1;
+            emit('chat');
+            check(field('tab_bot_name').textContent === 'Bob', 'Char tab name updates with the selected card');
+            check(!prompt() && field('items').querySelector('.vefari_card'), 'Collection stays global when switching characters; equipped state does not leak');
+            await click('equip', coat.id);
+            check(prompt() === '[OUTFIT: Bob is currently wearing: FULL: A green wool coat.]', 'The same Char collection works for another bot');
+            context.characterId = 0;
+            emit('chat');
+            context.groupId = 'group-1';
+            emit('chat');
+            check(!prompt() && field('mode').disabled, 'Unsupported groups clear injection but keep collection accessible');
+            context.groupId = null;
+            emit('chat');
+            field('add').click();
+            input('name', 'Unsaved draft');
+            confirmResult = false;
+            field('tab_user').click();
+            check(field('tab_bot').getAttribute('aria-selected') === 'true' && field('name').value === 'Unsaved draft', 'Tab change can be cancelled without losing a draft');
+            field('close').click();
+            await settle();
+            check(document.querySelector('.vefari_popup[open]'), 'Closing can be cancelled without losing a draft');
+            confirmResult = true;
+            field('cancel').click();
+            field('close').click();
+            await wait(() => !document.querySelector('.vefari_popup'));
+            emit('generate');
+            check(prompt().includes('A green wool coat'), 'Injection works while the wardrobe window is closed');
+            await open();
+            check(field('name').value === '' && field('items').querySelector('.vefari_card'), 'Reopening preserves collection and event handlers, without discarded drafts');
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 1500; canvas.height = 750;
+            canvas.getContext('2d').fillRect(0, 0, 1500, 750);
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            const transfer = new DataTransfer();
+            transfer.items.add(new File([blob], 'reference.png', { type: 'image/png' }));
+            field('add').click();
+            input('name', 'Boots');
+            change('category', 'shoes');
+            input('description', 'Black leather boots');
+            field('image').files = transfer.files;
+            await save();
+            const boots = context.extensionSettings.vefari.items.find(item => item.name === 'Boots');
+            await click('equip', boots.id);
+            check(field('mode').value === 'parts' && boots.audiences.join() === 'bot', 'Char-specific image item automatically selects parts mode');
+            const preview = field('items').querySelector('.vefari_card img').getBoundingClientRect();
+            check(preview.height >= 150 && preview.width < preview.height, 'Image preview is larger and vertically oriented');
+            const references = await window.vefari.getImageReferences('bot');
+            check(references.length === 1 && references[0].mimeType === 'image/png', 'Public API returns the current image reference');
+            const decoded = new Image();
+            decoded.src = `data:${references[0].mimeType};base64,${references[0].base64}`;
+            await decoded.decode();
+            check(decoded.naturalWidth === 1024 && decoded.naturalHeight === 512, 'Reference is resized proportionally');
+
+            const exchange = await import('/transfer.js');
+            const downloads = [];
+            const createUrl = URL.createObjectURL.bind(URL);
+            URL.createObjectURL = blob => { downloads.push(blob); return createUrl(blob); };
+            const contains = (haystack, text) => {
+                const needle = new TextEncoder().encode(text);
+                outer: for (let i = 0; i + needle.length <= haystack.length; i++) {
+                    for (let j = 0; j < needle.length; j++) if (haystack[i + j] !== needle[j]) continue outer;
+                    return true;
+                }
+                return false;
+            };
+            await click('edit', boots.id);
+            check(!field('export_item').disabled, 'Editor export is enabled for items with an image');
+            field('export_item').click();
+            await idle();
+            const exportedPng = new Uint8Array(await downloads.at(-1).arrayBuffer());
+            check(exchange.extractOutfitText(exportedPng) === 'Black leather boots' && field('status').dataset.error !== 'true', 'Export downloads a PNG with the outfit text embedded');
+            field('cancel').click();
+            field('settings_toggle').click();
+            field('export_all').click();
+            await idle();
+            const archive = new Uint8Array(await downloads.at(-1).arrayBuffer());
+            check(archive[0] === 0x50 && archive[1] === 0x4B && contains(archive, 'Black leather boots') && contains(archive, 'A green wool coat'), 'Export all packs every outfit as a PNG with embedded text into one ZIP');
+            field('back').click();
+            const outfitPng = exchange.embedOutfitText(new Uint8Array(await blob.arrayBuffer()), 'Льняная рубаха с вышивкой на плечах.');
+            const importFiles = new DataTransfer();
+            importFiles.items.add(new File([outfitPng], 'рубаха.png', { type: 'image/png' }));
+            field('import_file').files = importFiles.files;
+            field('import_file').dispatchEvent(new Event('change'));
+            await idle();
+            check(!field('editor_panel').hidden && field('description').value === 'Льняная рубаха с вышивкой на плечах.', 'Import pulls the embedded outfit text out of the PNG');
+            check(field('name').value === 'рубаха' && !field('export_item').disabled, 'Import pre-fills the name from the file and allows re-export');
+            change('category', 'top');
+            await save();
+            const shirt = context.extensionSettings.vefari.items.find(item => item.name === 'рубаха');
+            check(shirt?.imagePath && shirt.category === 'top' && shirt.description.includes('вышивкой'), 'Imported outfit keeps the picture and chooses its category at import time');
+            const plainFiles = new DataTransfer();
+            plainFiles.items.add(new File([blob], 'plain.png', { type: 'image/png' }));
+            field('import_file').files = plainFiles.files;
+            field('import_file').dispatchEvent(new Event('change'));
+            await idle();
+            check(field('status').dataset.error === 'true' && field('editor_panel').hidden, 'Import rejects PNGs without embedded outfit text');
+            await click('delete', shirt.id);
+
+            await click('edit', boots.id);
+            field('remove_image').checked = true;
+            await save();
+            check((await fetch(references[0].imagePath)).status === 404 && prompt().includes('Black leather boots'), 'Removing an image deletes the unused file and retains text injection');
+            await click('delete', boots.id);
+            await click('delete', coat.id);
+            check(!prompt() && !context.extensionSettings.vefari.items.length, 'Deleting shared items clears all owners');
+
+            field('add').click(); input('name', 'Северная туника'); input('description', 'Льняная туника с вышивкой на вороте и тканым поясом.'); await save();
+            const restored = context.extensionSettings.vefari.items[0];
+            await click('equip', restored.id);
+            context.extensionSettings = JSON.parse(JSON.stringify(context.extensionSettings));
+            emit('ready');
+            check(context.extensionSettings.vefari.schemaVersion === 3 && prompt().includes('Льняная туника'), 'Collection membership and equipped state survive a settings roundtrip');
+            const { audiences, ...legacy } = restored;
+            context.extensionSettings.vefari = { schemaVersion: 2, enabled: true, items: [legacy], assignments: [{ characterKey: 'character:alice.png', target: 'bot', mode: 'full', itemIds: [legacy.id] }] };
+            emit('chat');
+            field('tab_user').click();
+            check(field('items').querySelector('.vefari_card'), 'Legacy item without audience is retained in both collections');
+            await click('edit', legacy.id); input('description', 'Льняная туника с вышивкой на вороте и тканым поясом.'); await save();
+            check(context.extensionSettings.vefari.schemaVersion === 3 && context.extensionSettings.vefari_v2_backup.schemaVersion === 2, 'Collection migration saves schema 3 with original schema 2 backup');
+
+            context.characterId = undefined;
+            emit('chat');
+            field('add').click(); input('name', 'Дорожный плащ'); input('description', 'Шерстяной плащ с круглой бронзовой застёжкой.'); await save();
+            check(context.extensionSettings.vefari.items.length === 2 && !prompt(), 'Collection can be edited without an active chat');
+            context.characterId = 0;
+            emit('chat');
+            field('add').click(); input('name', 'Плетёный пояс'); change('category', 'accessories'); input('description', 'Широкий пояс с геометрическим узором.'); await save();
+            const scroll = wardrobe().querySelector('.vefari_scroll');
+            check(scroll.scrollWidth <= scroll.clientWidth + 1 && field('window').scrollWidth <= field('window').clientWidth + 1, 'Window content does not overflow horizontally');
+            const geometry = [document.querySelector('.vefari_popup'), field('window'), field('controls'), scroll, field('close'), field('tab_user')].map(element => ({ id: element.id || element.className, rect: element.getBoundingClientRect().toJSON(), scrollTop: element.scrollTop, scrollHeight: element.scrollHeight }));
+            if (field('close').getBoundingClientRect().bottom > innerHeight || field('tab_user').getBoundingClientRect().top < 0) throw new Error(`Window layout: viewport ${innerWidth}x${innerHeight}; ${JSON.stringify(geometry)}`);
+            check(true, 'Header and tabs remain inside the viewport');
+            document.querySelector('.vefari_popup').dispatchEvent(new Event('cancel', { cancelable: true }));
+            await wait(() => !document.querySelector('.vefari_popup'));
+            await open();
+            check(saveCount >= 10 && errors.length === 0, 'Settings persist with no uncaught browser errors');
+            document.getElementById('test_result').dataset.result = 'passed';
+            document.getElementById('test_result').textContent = results.join('\n');
+        } catch (error) {
+            document.getElementById('test_result').dataset.result = 'failed';
+            document.getElementById('test_result').textContent = `${results.join('\n')}\nFAILED: ${error.stack}\n${errors.join('\n')}`;
+        } finally {
+            const result = document.getElementById('test_result');
+            await fetch('/test-result', { method: 'POST', headers: context.getRequestHeaders(), body: JSON.stringify({ status: result.dataset.result, text: result.textContent }) });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Document-level font faces are also available inside Shadow DOM. */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Cormorant+Garamond:wght@600;700&family=Golos+Text:wght@400;500;600&display=swap');
+
+#vefari_menu { display: flex; align-items: center; gap: 0.65em; width: 100%; color: inherit; font: inherit; text-align: left; background: none; border: 0; cursor: pointer; }
+#vefari_menu .vefari_icon { width: 24px; height: 26px; flex: 0 0 auto; vertical-align: middle; }
+#vefari_menu:focus-visible { outline: 2px solid #c5a572; outline-offset: 2px; }
+
+/* Only the native Popup shell is in light DOM. Internal controls use wardrobe.css. */
+#vefari_dialog.vefari_popup {
+    all: initial !important;
+    display: none !important;
+    box-sizing: border-box !important;
+    position: fixed !important;
+    inset: 0 !important;
+    margin: auto !important;
+    padding: 0 !important;
+    width: min(900px, calc(100vw - 32px)) !important;
+    max-width: calc(100vw - 32px) !important;
+    height: fit-content !important;
+    max-height: calc(100dvh - 32px) !important;
+    overflow: hidden !important;
+    border: 1px solid #65543c !important;
+    border-radius: 12px !important;
+    background: #111519 !important;
+    color: #ece5d8 !important;
+    box-shadow: 0 24px 90px #000b, 0 0 0 1px #090c0e !important;
+    color-scheme: dark !important;
+}
+#vefari_dialog.vefari_popup[open] { display: block !important; }
+#vefari_dialog.vefari_popup::backdrop { background: #05080cbd !important; backdrop-filter: blur(5px) !important; }
+#vefari_dialog.vefari_popup::before, #vefari_dialog.vefari_popup::after { content: none !important; }
+#vefari_dialog.vefari_popup .popup-body,
+#vefari_dialog.vefari_popup .popup-content {
+    all: initial !important;
+    display: block !important;
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+    width: 100% !important;
+}
+#vefari_dialog.vefari_popup .popup-controls,
+#vefari_dialog.vefari_popup .popup-button-close { display: none !important; }
+#vefari_dialog #vefari_host {
+    all: initial !important;
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    color-scheme: dark !important;
+}
+#vefari_dialog #vefari_host::before, #vefari_dialog #vefari_host::after { content: none !important; }
+@media (max-width: 540px) {
+    #vefari_dialog.vefari_popup { width: calc(100vw - 16px) !important; max-width: calc(100vw - 16px) !important; max-height: calc(100dvh - 16px) !important; border-radius: 9px !important; }
+}

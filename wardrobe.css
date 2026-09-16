@@ -1,0 +1,157 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Loaded only inside the wardrobe's shadow root. No Tavern theme variables. */
+#vefari_window {
+    all: initial;
+    --vefari-bg: #111519;
+    --vefari-surface: #191e23;
+    --vefari-line: #363b3d;
+    --vefari-accent: #c5a572;
+    --vefari-text: #ece5d8;
+    --vefari-muted: #a5a7a4;
+    --vefari-body: 'Golos Text', 'Segoe UI', sans-serif;
+    --vefari-heading: 'Cormorant Garamond', Georgia, serif;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    height: min(740px, calc(100vh - 48px));
+    height: min(740px, calc(100dvh - 48px));
+    min-width: 0;
+    color: var(--vefari-text);
+    background: radial-gradient(ellipse at 0 0, #c5a5720c, transparent 55%), var(--vefari-bg);
+    font: 400 13px/1.55 var(--vefari-body);
+    color-scheme: dark;
+    text-align: left;
+    direction: ltr;
+    isolation: isolate;
+    -webkit-text-size-adjust: 100%;
+}
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+h2, h3, p { margin: 0; }
+h3 { font: 600 25px/1.1 var(--vefari-heading); color: var(--vefari-text); }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:disabled, input:disabled, select:disabled { cursor: not-allowed; opacity: 0.48; }
+:focus-visible { outline: 2px solid var(--vefari-accent); outline-offset: 3px; }
+::selection { color: #111519; background: #c5a572; }
+* { scrollbar-width: thin; scrollbar-color: #65543c #111519; }
+.vefari_icon { display: block; width: 20px; height: 22px; flex: 0 0 auto; }
+[data-icon] { display: inline-flex; }
+.vefari_header { display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; gap: 12px; padding: 16px 24px; border-bottom: 1px solid #c5a57240; background: linear-gradient(115deg, #202427, #14191d); }
+.vefari_brand { display: flex; align-items: center; gap: 13px; min-width: 0; }
+.vefari_brand > span { display: grid; place-items: center; width: 46px; height: 50px; color: var(--vefari-accent); border: 1px solid #c5a57259; border-radius: 12px 12px 20px 20px; background: #0d1115; box-shadow: inset 0 0 0 4px #1c2023; }
+.vefari_brand .vefari_icon { width: 29px; height: 32px; }
+.vefari_brand h2 { font: 600 25px/1.2 'Cinzel', Georgia, serif; letter-spacing: 0.2em; color: #dbc39c; }
+.vefari_eyebrow { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--vefari-muted); }
+.vefari_brand p { margin-top: 4px; }
+.vefari_row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.vefari_button, .vefari_icon_button {
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    flex: 0 0 auto; width: fit-content; max-width: 100%; min-height: 36px; margin: 0;
+    padding: 7px 12px; border: 1px solid #494a43; border-radius: 5px;
+    background: #20252a; color: #ddd7cc; font-size: 12px; font-weight: 500; line-height: 1.35;
+    transition: border-color 140ms, background-color 140ms, color 140ms;
+}
+.vefari_button:hover:not(:disabled), .vefari_icon_button:hover:not(:disabled) { color: #f4e5c9; border-color: #a08860; background: #2b2e2d; }
+.vefari_button_primary { color: #171714; background: #c5a572; border-color: #c5a572; }
+.vefari_button_primary:hover:not(:disabled) { color: #111519; background: #dcc08f; border-color: #dcc08f; }
+.vefari_button_quiet { background: transparent; border-color: transparent; color: var(--vefari-muted); }
+.vefari_icon_button { width: 36px; height: 36px; padding: 7px; }
+.vefari_icon_button[aria-expanded="true"] { border-color: var(--vefari-accent); color: var(--vefari-accent); background: #c5a57214; }
+[data-action="delete"]:hover:not(:disabled) { color: #f0b1a8; border-color: #915b56; background: #382626; }
+#vefari_controls { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; }
+.vefari_tabs { display: flex; flex-shrink: 0; gap: 8px; padding: 10px 24px 0; border-bottom: 1px solid var(--vefari-line); }
+[role="tab"] { flex: 0 1 auto; min-width: 124px; max-width: 220px; overflow: hidden; padding: 6px 16px 9px; border: 0; border-bottom: 2px solid transparent; background: transparent; text-align: left; color: var(--vefari-muted); }
+.vefari_tab_label { display: block; font: 600 16px/1.2 'Cinzel', Georgia, serif; letter-spacing: 0.08em; }
+.vefari_tab_owner { display: block; margin-top: 2px; overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+[role="tab"]:hover { color: var(--vefari-text); background: #c5a57209; }
+[role="tab"][aria-selected="true"] { border-bottom-color: var(--vefari-accent); color: #dbc39c; background: linear-gradient(0deg, #c5a57212, transparent); }
+.vefari_scroll { flex: 1; min-height: 0; min-width: 0; padding: 18px 24px 24px; overflow-y: auto; overscroll-behavior: contain; }
+.vefari_hint { color: var(--vefari-muted); font-size: 11px; line-height: 1.6; }
+#vefari_context { margin-bottom: 16px; overflow-wrap: anywhere; }
+#vefari_context:empty { display: none; }
+#vefari_disabled_notice { padding: 10px 12px; margin-bottom: 16px; border-left: 2px solid var(--vefari-accent); background: #c5a5720c; color: #dbc39c; }
+.vefari_section_heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+#vefari_equipped_bar { flex-shrink: 0; padding: 10px 24px 12px; border-top: 1px solid #c5a57240; background: linear-gradient(180deg, #161b1f, #101418); }
+#vefari_equipped_bar h3 { font-size: 20px; }
+#vefari_equipped_bar .vefari_section_heading { margin-bottom: 8px; }
+#vefari_equipped_bar .vefari_current { margin-bottom: 0; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }
+.vefari_current { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 9px; font-size: 12px; color: #bbb7ae; }
+.vefari_current .vefari_row { max-width: 100%; flex-shrink: 0; padding: 4px 5px 4px 10px; border: 1px solid #65543c; border-radius: 5px; background: #101519; }
+.vefari_current .vefari_row > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.vefari_current .vefari_button { padding: 4px 8px; min-height: 28px; font-size: 10px; background: transparent; border-color: #363b3d; }
+.vefari_collection_toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin: 16px 0 14px; }
+.vefari_toolbar_actions { display: flex; align-items: center; gap: 8px; }
+#vefari_filter { width: 184px; max-width: 100%; min-height: 36px; }
+input[type="text"], select, textarea { display: block; width: 100%; min-width: 0; padding: 9px 11px; margin: 0; border: 1px solid #424747; border-radius: 5px; background: #101519; color: var(--vefari-text); box-shadow: inset 0 1px 3px #0003; }
+select { padding-right: 24px; }
+input::placeholder, textarea::placeholder { color: #828681; opacity: 1; }
+input[type="text"]:focus, select:focus, textarea:focus { border-color: var(--vefari-accent); }
+textarea { min-height: 116px; max-height: 300px; resize: vertical; }
+.vefari_grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(218px, 1fr)); align-items: start; gap: 14px; }
+.vefari_card { display: flex; flex-direction: column; gap: 10px; min-width: 0; max-width: 280px; height: 100%; padding: 12px; border: 1px solid var(--vefari-line); border-radius: 7px; background: linear-gradient(145deg, #22282b, #171c21); box-shadow: 0 4px 12px #0002; cursor: pointer; transition: border-color 140ms, box-shadow 140ms; }
+.vefari_card:hover { border-color: #a08860; }
+.vefari_card[data-worn="true"] { border-color: #c5a572; background: linear-gradient(145deg, #292c27, #1a201e); box-shadow: inset 0 0 0 1px #c5a572, 0 0 0 1px #c5a57245, 0 0 22px #c5a57224; }
+.vefari_card > img, .vefari_text_only { align-self: center; width: 152px; height: 190px; border-radius: 5px; background: #101519; border: 1px solid #ffffff07; }
+.vefari_card > img { object-fit: cover; }
+.vefari_text_only { display: grid; place-items: center; position: relative; color: #a88e65; background: radial-gradient(ellipse, #c5a57212, transparent 70%), #12171b; }
+.vefari_text_only::before { content: ''; position: absolute; width: 66px; height: 82px; border: 1px solid #c5a57230; border-radius: 22px 22px 32px 32px; }
+.vefari_text_only .vefari_icon { width: 38px; height: 44px; }
+.vefari_card_meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--vefari-muted); font-size: 10px; }
+.vefari_card_title { font: 600 23px/1.1 var(--vefari-heading); color: #eee2cb; overflow-wrap: anywhere; }
+.vefari_card p { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; line-height: 1.65; color: #b8b9b4; max-height: 7em; overflow-y: auto; }
+.vefari_card_actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 5px; }
+.vefari_empty { grid-column: 1 / -1; justify-self: center; width: min(100%, 420px); margin: 16px 0; padding: 24px; border: 1px dashed #65543c; border-radius: 7px; background: #191e23; text-align: center; }
+#vefari_settings_panel > .vefari_section_heading, #vefari_editor_panel > .vefari_section_heading { margin-bottom: 16px; }
+.vefari_settings_card, .vefari_editor { min-width: 0; padding: 16px; border: 1px solid var(--vefari-line); border-radius: 7px; background: #191e23; }
+.vefari_settings_card { max-width: 560px; }
+.vefari_editor { max-width: 760px; }
+.vefari_settings_card > .vefari_hint { margin-top: 14px; }
+.vefari_field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; min-width: 0; color: #c1c1b8; font-size: 11px; }
+.vefari_checkbox { display: flex; align-items: flex-start; gap: 9px; margin-bottom: 16px; font-size: 12px; color: #d5d2c8; }
+input[type="checkbox"] { appearance: auto; flex: 0 0 auto; width: 16px; height: 16px; margin: 2px 0 0; accent-color: #c5a572; }
+.vefari_form_row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.vefari_upload { padding: 12px; border: 1px dashed #545044; border-radius: 5px; background: #13181c; }
+input[type="file"] { display: block; width: 100%; min-width: 0; margin-top: 4px; font-size: 11px; color: var(--vefari-muted); }
+input[type="file"]::file-selector-button { padding: 7px 9px; margin-right: 8px; border: 1px solid #65543c; border-radius: 4px; background: #282923; color: #dec59b; font: inherit; cursor: pointer; }
+#vefari_editor_image:empty { display: none; }
+#vefari_editor_image img { display: block; width: 120px; height: 150px; margin-bottom: 12px; object-fit: contain; background: #101519; border-radius: 4px; }
+.vefari_editor > .vefari_hint { margin-top: 14px; }
+details { margin-top: 16px; border-top: 1px solid var(--vefari-line); }
+summary { padding: 12px 0 0; color: #c5a572; font-size: 11px; cursor: pointer; }
+#vefari_prompt { padding: 12px; margin: 12px 0 0; border: 1px solid var(--vefari-line); border-radius: 4px; background: #101519; color: #b8b9b4; white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.7 ui-monospace, Consolas, monospace; max-height: 220px; overflow-y: auto; }
+#vefari_status { flex-shrink: 0; padding: 10px 24px; border-top: 1px solid var(--vefari-line); background: #191e23; font-size: 12px; overflow-wrap: anywhere; max-height: 96px; overflow-y: auto; }
+#vefari_status:empty { display: none; }
+#vefari_status[data-error="true"] { color: #f0b1a8; }
+@media (max-width: 700px) {
+    .vefari_settings_card .vefari_field { max-width: 260px; }
+}
+@media (max-width: 540px) {
+    #vefari_window { height: calc(100vh - 32px); height: calc(100dvh - 32px); }
+    .vefari_header { padding: 15px; }
+    .vefari_brand { gap: 10px; }
+    .vefari_brand h2 { font-size: 21px; }
+    .vefari_brand > span { width: 36px; height: 43px; }
+    .vefari_header .vefari_row { gap: 6px; flex-wrap: nowrap; }
+    .vefari_tabs { padding: 8px 15px 0; }
+    .vefari_scroll { padding: 15px; }
+    .vefari_grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .vefari_card { padding: 10px; }
+    .vefari_card > img, .vefari_text_only { width: 126px; height: 160px; }
+    .vefari_card_title { font-size: 21px; }
+    .vefari_card_actions .vefari_icon_button { width: 40px; height: 40px; }
+    .vefari_button, .vefari_icon_button { min-height: 40px; }
+    #vefari_equipped_bar { padding: 9px 15px 10px; }
+    #vefari_filter { width: 168px; }
+    .vefari_settings_card, .vefari_editor { padding: 14px; }
+    input[type="text"], select, textarea { font-size: 16px; }
+    #vefari_status { padding: 9px 15px; }
+}
+@media (max-width: 360px) {
+    .vefari_brand > span { display: none; }
+    .vefari_grid, .vefari_form_row { grid-template-columns: minmax(0, 1fr); }
+    .vefari_card { max-width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+}

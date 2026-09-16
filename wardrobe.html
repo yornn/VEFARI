@@ -1,0 +1,72 @@
+<section id="vefari_window" aria-label="Гардероб VEFARI" lang="ru">
+    <header class="vefari_header">
+        <div class="vefari_brand"><span data-icon="tunic"></span><h2 id="vefari_title">VEFARI</h2></div>
+        <div class="vefari_row">
+            <button id="vefari_settings_toggle" class="vefari_icon_button" type="button" title="Настройки гардероба" aria-label="Настройки гардероба" aria-expanded="false" aria-controls="vefari_settings_panel"><span data-icon="settings"></span></button>
+            <button id="vefari_close" class="vefari_icon_button" type="button" title="Закрыть" aria-label="Закрыть гардероб"><span data-icon="close"></span></button>
+        </div>
+    </header>
+    <div id="vefari_controls" role="group" aria-label="Управление гардеробом" aria-busy="false">
+        <nav class="vefari_tabs" role="tablist" aria-label="Коллекция одежды">
+            <button id="vefari_tab_user" type="button" role="tab" aria-selected="true" aria-controls="vefari_collection_panel" data-target="user"><span class="vefari_tab_label">USER</span><span id="vefari_tab_user_name" class="vefari_tab_owner">Player</span></button>
+            <button id="vefari_tab_bot" type="button" role="tab" aria-selected="false" aria-controls="vefari_collection_panel" data-target="bot" tabindex="-1"><span class="vefari_tab_label">CHAR</span><span id="vefari_tab_bot_name" class="vefari_tab_owner">Alice</span></button>
+        </nav>
+        <div class="vefari_scroll">
+            <p id="vefari_context" class="vefari_hint"></p>
+            <p id="vefari_disabled_notice" class="vefari_hint" hidden>Гардероб выключен. Выбор сохраняется, но одежда не отправляется модели. Включить можно в настройках.</p>
+            <section id="vefari_collection_panel" role="tabpanel" aria-labelledby="vefari_tab_user" tabindex="0">
+                <div class="vefari_collection_toolbar">
+                    <select id="vefari_filter" aria-label="Фильтр по категории"><option value="all">Все вещи</option></select>
+                    <div class="vefari_toolbar_actions">
+                        <button id="vefari_import" class="vefari_icon_button" type="button" title="Импорт наряда из PNG со вшитым описанием" aria-label="Импорт наряда из PNG со вшитым описанием"><span data-icon="import"></span></button>
+                        <input id="vefari_import_file" type="file" accept="image/png" hidden>
+                        <button id="vefari_add" class="vefari_icon_button vefari_button_primary" type="button" title="Добавить вещь" aria-label="Добавить вещь"><span data-icon="plus"></span></button>
+                    </div>
+                </div>
+                <div id="vefari_items" class="vefari_grid"></div>
+            </section>
+            <section id="vefari_settings_panel" aria-labelledby="vefari_settings_title" hidden>
+                <div class="vefari_section_heading"><h3 id="vefari_settings_title" tabindex="-1">Настройки</h3><button id="vefari_back" class="vefari_button" type="button"><span data-icon="back"></span>К нарядам</button></div>
+                <section class="vefari_settings_card" aria-label="Настройки гардероба">
+                    <label class="vefari_checkbox"><input id="vefari_enabled" type="checkbox"><span>Включить гардероб и текстовый инжект</span></label>
+                    <label class="vefari_field">Режим выбранного владельца
+                        <select id="vefari_mode"><option value="full">Полный наряд</option><option value="parts">По частям</option></select>
+                    </label>
+                    <p class="vefari_hint">Полный наряд можно дополнить аксессуарами и причёской. Верх, низ или обувь включают режим по частям.</p>
+                    <details><summary>Текст текущего инжекта</summary><pre id="vefari_prompt"></pre></details>
+                    <div class="vefari_row">
+                        <button id="vefari_export_all" class="vefari_button" type="button"><span data-icon="export"></span>Экспорт всех нарядов</button>
+                    </div>
+                    <p class="vefari_hint">Скачивает ZIP: картинка каждой вещи со вшитым в неё описанием. Категории и коллекции не выгружаются — при импорте их выбирает получатель.</p>
+                </section>
+            </section>
+            <section id="vefari_editor_panel" aria-labelledby="vefari_editor_title" hidden>
+                <div class="vefari_section_heading"><h3 id="vefari_editor_title" tabindex="-1">Добавить вещь</h3><button id="vefari_editor_back" class="vefari_button" type="button"><span data-icon="back"></span>К нарядам</button></div>
+                <section class="vefari_editor" aria-label="Редактор вещи">
+                    <form id="vefari_form">
+                        <label class="vefari_field">Название <input id="vefari_name" type="text" maxlength="200" placeholder="Например, Северный плащ" required></label>
+                        <div class="vefari_form_row">
+                            <label class="vefari_field">Коллекция <select id="vefari_audience"><option value="user">USER</option><option value="bot">CHAR</option><option value="both">USER и CHAR</option></select></label>
+                            <label class="vefari_field">Категория <select id="vefari_category"></select></label>
+                        </div>
+                        <label class="vefari_field">Описание для модели <textarea id="vefari_description" rows="4" placeholder="Материал, цвет, крой и важные детали…" required></textarea></label>
+                        <label class="vefari_field vefari_upload">Референс <span class="vefari_hint">Необязательно · PNG / JPEG / WebP · до 10 МБ</span><input id="vefari_image" type="file" accept="image/png,image/jpeg,image/webp"></label>
+                        <div id="vefari_editor_image"></div>
+                        <label class="vefari_checkbox"><input id="vefari_remove_image" type="checkbox"><span>Убрать сохранённую картинку</span></label>
+                        <div class="vefari_row">
+                            <button class="vefari_button vefari_button_primary" type="submit">Сохранить вещь</button>
+                            <button id="vefari_export_item" class="vefari_button vefari_button_quiet" type="button" disabled><span data-icon="export"></span>Экспорт</button>
+                            <button id="vefari_cancel" class="vefari_button vefari_button_quiet" type="button">Отмена</button>
+                        </div>
+                    </form>
+                    <p class="vefari_hint">В чат отправляется только описание. Картинка — референс. Экспорт скачивает PNG со вшитым описанием — так наряд можно передать.</p>
+                </section>
+            </section>
+        </div>
+    </div>
+    <section id="vefari_equipped_bar" aria-labelledby="vefari_equipped_title">
+        <div class="vefari_section_heading"><h3 id="vefari_equipped_title">Сейчас надето</h3><button id="vefari_clear" class="vefari_button vefari_button_quiet" type="button">Снять всё</button></div>
+        <div id="vefari_current" class="vefari_current"></div>
+    </section>
+    <p id="vefari_status" role="status" aria-live="polite"></p>
+</section>
