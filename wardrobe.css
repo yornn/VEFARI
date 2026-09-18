@@ -92,14 +92,13 @@ textarea { min-height: 116px; max-height: 300px; resize: vertical; }
 .vefari_card { display: flex; flex-direction: column; gap: 10px; min-width: 0; max-width: 280px; height: 100%; padding: 12px; border: 1px solid var(--vefari-line); border-radius: 7px; background: linear-gradient(145deg, #22282b, #171c21); box-shadow: 0 4px 12px #0002; cursor: pointer; transition: border-color 140ms, box-shadow 140ms; }
 .vefari_card:hover { border-color: #a08860; }
 .vefari_card[data-worn="true"] { border-color: #c5a572; background: linear-gradient(145deg, #292c27, #1a201e); box-shadow: inset 0 0 0 1px #c5a572, 0 0 0 1px #c5a57245, 0 0 22px #c5a57224; }
-.vefari_card > img, .vefari_text_only { align-self: center; width: 152px; height: 190px; border-radius: 5px; background: #101519; border: 1px solid #ffffff07; }
+.vefari_card > img, .vefari_text_only { align-self: center; width: 100%; aspect-ratio: 4 / 5; border-radius: 5px; background: #101519; border: 1px solid #ffffff07; }
 .vefari_card > img { object-fit: cover; }
 .vefari_text_only { display: grid; place-items: center; position: relative; color: #a88e65; background: radial-gradient(ellipse, #c5a57212, transparent 70%), #12171b; }
-.vefari_text_only::before { content: ''; position: absolute; width: 66px; height: 82px; border: 1px solid #c5a57230; border-radius: 22px 22px 32px 32px; }
+.vefari_text_only::before { content: ''; position: absolute; width: 44%; height: 44%; border: 1px solid #c5a57230; border-radius: 22px 22px 32px 32px; }
 .vefari_text_only .vefari_icon { width: 38px; height: 44px; }
-.vefari_card_meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--vefari-muted); font-size: 10px; }
 .vefari_card_title { font: 600 23px/1.1 var(--vefari-heading); color: #eee2cb; overflow-wrap: anywhere; }
-.vefari_card p { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; line-height: 1.65; color: #b8b9b4; max-height: 7em; overflow-y: auto; }
+.vefari_card p { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; line-height: 1.65; color: #b8b9b4; }
 .vefari_card_actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 5px; }
 .vefari_empty { grid-column: 1 / -1; justify-self: center; width: min(100%, 420px); margin: 16px 0; padding: 24px; border: 1px dashed #65543c; border-radius: 7px; background: #191e23; text-align: center; }
 #vefari_settings_panel > .vefari_section_heading, #vefari_editor_panel > .vefari_section_heading { margin-bottom: 16px; }
@@ -114,6 +113,15 @@ input[type="checkbox"] { appearance: auto; flex: 0 0 auto; width: 16px; height: 
 .vefari_upload { padding: 12px; border: 1px dashed #545044; border-radius: 5px; background: #13181c; }
 input[type="file"] { display: block; width: 100%; min-width: 0; margin-top: 4px; font-size: 11px; color: var(--vefari-muted); }
 input[type="file"]::file-selector-button { padding: 7px 9px; margin-right: 8px; border: 1px solid #65543c; border-radius: 4px; background: #282923; color: #dec59b; font: inherit; cursor: pointer; }
+.vefari_send_mode { min-width: 0; margin: 0 0 14px; padding: 0; border: 0; }
+.vefari_send_mode legend { margin-bottom: 6px; padding: 0; color: #c1c1b8; font-size: 11px; }
+.vefari_segmented { display: flex; width: fit-content; max-width: 100%; border: 1px solid #424747; border-radius: 5px; overflow: hidden; }
+.vefari_segment { position: relative; flex: 0 0 auto; }
+.vefari_segment input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.vefari_segment span { display: block; padding: 9px 14px; background: #101519; color: var(--vefari-muted); font-size: 12px; white-space: nowrap; transition: background-color 140ms, color 140ms; }
+.vefari_segment + .vefari_segment span { border-left: 1px solid #424747; }
+.vefari_segment input:checked + span { background: #c5a572; color: #171714; font-weight: 600; }
+.vefari_segment input:focus-visible + span { outline: 2px solid var(--vefari-accent); outline-offset: -2px; }
 #vefari_editor_image:empty { display: none; }
 #vefari_editor_image img { display: block; width: 120px; height: 150px; margin-bottom: 12px; object-fit: contain; background: #101519; border-radius: 4px; }
 .vefari_editor > .vefari_hint { margin-top: 14px; }
@@ -137,7 +145,6 @@ summary { padding: 12px 0 0; color: #c5a572; font-size: 11px; cursor: pointer; }
     .vefari_scroll { padding: 15px; }
     .vefari_grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
     .vefari_card { padding: 10px; }
-    .vefari_card > img, .vefari_text_only { width: 126px; height: 160px; }
     .vefari_card_title { font-size: 21px; }
     .vefari_card_actions .vefari_icon_button { width: 40px; height: 40px; }
     .vefari_button, .vefari_icon_button { min-height: 40px; }

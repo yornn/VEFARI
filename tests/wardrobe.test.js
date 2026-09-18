@@ -26,7 +26,17 @@ test('text-only items are trimmed and created without mutating the input', () =>
     assert.equal(next.items[0].name, 'Coat');
     assert.equal(next.items[0].description, 'Blue coat');
     assert.equal(next.items[0].imagePath, '');
+    assert.equal(next.items[0].sendImage, true);
     assert.equal(state.items.length, 0);
+});
+
+test('text-only send mode survives add and edit without resetting to the default', () => {
+    let state = inventory({ ...garment('coat'), sendImage: false });
+    assert.equal(state.items[0].sendImage, false);
+    state = reduceWardrobe(freezeDeep(state), { type: 'edit-item', item: { ...garment('coat'), description: 'Still text only', sendImage: false } });
+    assert.equal(state.items[0].sendImage, false);
+    state = reduceWardrobe(freezeDeep(state), { type: 'edit-item', item: { ...garment('coat'), sendImage: true } });
+    assert.equal(state.items[0].sendImage, true);
 });
 
 test('bad commands fail atomically', () => {
@@ -39,6 +49,7 @@ test('bad commands fail atomically', () => {
         { type: 'add-item', item: { ...garment('new'), name: 42 } },
         { type: 'add-item', item: { ...garment('new'), audiences: [] } },
         { type: 'add-item', item: { ...garment('new'), audiences: ['npc'] } },
+        { type: 'add-item', item: { ...garment('new'), sendImage: 'yes' } },
         { type: 'edit-item', item: garment('missing') },
         { type: 'wear', ...owner, itemId: 'missing' },
         { type: 'wear', ...owner, target: 'npc', itemId: 'coat' },

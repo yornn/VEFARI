@@ -53,13 +53,20 @@
                         <label class="vefari_field vefari_upload">Референс <span class="vefari_hint">Необязательно · PNG / JPEG / WebP · до 10 МБ</span><input id="vefari_image" type="file" accept="image/png,image/jpeg,image/webp"></label>
                         <div id="vefari_editor_image"></div>
                         <label class="vefari_checkbox"><input id="vefari_remove_image" type="checkbox"><span>Убрать сохранённую картинку</span></label>
+                        <fieldset class="vefari_send_mode">
+                            <legend>Что отправлять для этой вещи</legend>
+                            <div class="vefari_segmented">
+                                <label class="vefari_segment"><input id="vefari_send_image" type="radio" name="vefari_send_mode" value="image" checked><span>Картинка и текст</span></label>
+                                <label class="vefari_segment"><input id="vefari_send_text" type="radio" name="vefari_send_mode" value="text"><span>Только текст</span></label>
+                            </div>
+                        </fieldset>
                         <div class="vefari_row">
                             <button class="vefari_button vefari_button_primary" type="submit">Сохранить вещь</button>
                             <button id="vefari_export_item" class="vefari_button vefari_button_quiet" type="button" disabled><span data-icon="export"></span>Экспорт</button>
                             <button id="vefari_cancel" class="vefari_button vefari_button_quiet" type="button">Отмена</button>
                         </div>
                     </form>
-                    <p class="vefari_hint">В чат отправляется только описание. Картинка — референс. Экспорт скачивает PNG со вшитым описанием — так наряд можно передать.</p>
+                    <p class="vefari_hint">Описание всегда попадает в чат. Режим «Картинка и текст» дополнительно отдаёт референс через API гардероба; «Только текст» скрывает картинку от адаптеров, не удаляя её. Экспорт скачивает PNG со вшитым описанием — так наряд можно передать.</p>
                 </section>
             </section>
         </div>

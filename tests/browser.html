@@ -187,6 +187,8 @@
             check(field('items').querySelector('.vefari_card').getBoundingClientRect().width <= 280, 'A single wardrobe card does not stretch across the collection');
             const placeholder = field('items').querySelector('.vefari_text_only').getBoundingClientRect();
             check(placeholder.height >= 150 && placeholder.width < placeholder.height, 'Text-only cards use a larger vertical decorative placeholder');
+            const coatCard = field('items').querySelector('.vefari_card');
+            check(!coatCard.querySelector('.vefari_card_meta') && !coatCard.textContent.includes('A blue wool coat'), 'Cards show only the picture, name and icon actions without category or description text');
             check(field('items').querySelector('[data-action="edit"]').getAttribute('aria-label').includes(coat.name), 'Compact icon actions retain accessible item-specific labels');
             check(field('status').textContent === '', 'Saving an item leaves the status line empty');
             await click('equip', coat.id);
@@ -253,10 +255,14 @@
             const transfer = new DataTransfer();
             transfer.items.add(new File([blob], 'reference.png', { type: 'image/png' }));
             field('add').click();
+            field('image').files = transfer.files;
+            field('image').dispatchEvent(new Event('change', { bubbles: true }));
+            check(field('name').value === 'reference', 'Choosing an image pre-fills the item name from the file name');
             input('name', 'Boots');
+            field('image').dispatchEvent(new Event('change', { bubbles: true }));
+            check(field('name').value === 'Boots', 'Choosing an image never overwrites a typed name');
             change('category', 'shoes');
             input('description', 'Black leather boots');
-            field('image').files = transfer.files;
             await save();
             const boots = context.extensionSettings.vefari.items.find(item => item.name === 'Boots');
             await click('equip', boots.id);
@@ -269,6 +275,12 @@
             decoded.src = `data:${references[0].mimeType};base64,${references[0].base64}`;
             await decoded.decode();
             check(decoded.naturalWidth === 1024 && decoded.naturalHeight === 512, 'Reference is resized proportionally');
+            await click('edit', boots.id);
+            check(field('send_image').checked && !field('send_text').checked, 'Editor defaults image items to picture and text mode');
+            field('send_text').checked = true;
+            field('send_text').dispatchEvent(new Event('change', { bubbles: true }));
+            await save();
+            check((await window.vefari.getImageReferences('bot')).length === 0 && prompt().includes('Black leather boots'), 'Text-only mode keeps the description injection but hides the image reference');
 
             const exchange = await import('/transfer.js');
             const downloads = [];
@@ -283,6 +295,7 @@
                 return false;
             };
             await click('edit', boots.id);
+            check(field('send_text').checked && !field('send_image').checked, 'Editor restores the saved text-only mode');
             check(!field('export_item').disabled, 'Editor export is enabled for items with an image');
             field('export_item').click();
             await idle();

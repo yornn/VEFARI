@@ -177,6 +177,14 @@ try {
         const image = await devtools.send('Page.captureScreenshot', { format: 'png' });
         await writeFile(process.env.VEFARI_SETTINGS_SCREENSHOT, Buffer.from(image.data, 'base64'));
         console.log(`Settings screenshot: ${process.env.VEFARI_SETTINGS_SCREENSHOT}`);
+        await evaluate(`${shadow}.getElementById('vefari_back').click()`);
+    }
+    if (process.env.VEFARI_EDITOR_SCREENSHOT) {
+        await evaluate(`${shadow}.getElementById('vefari_add').click()`);
+        await evaluate(`${shadow}.querySelector('.vefari_send_mode').scrollIntoView({ block: 'center' })`);
+        const image = await devtools.send('Page.captureScreenshot', { format: 'png' });
+        await writeFile(process.env.VEFARI_EDITOR_SCREENSHOT, Buffer.from(image.data, 'base64'));
+        console.log(`Editor screenshot: ${process.env.VEFARI_EDITOR_SCREENSHOT}`);
     }
     console.log(`Browser smoke test passed (${mobile ? 'mobile' : 'desktop'} ${width}x${height}, ${browser}):\n${result.text}`);
 } finally {

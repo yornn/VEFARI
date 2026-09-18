@@ -23,7 +23,7 @@ test('prototype migration preserves inventory, disabled state, modes and hidden 
     const state = decodeSettings(raw);
     assert.equal(state.schemaVersion, 3);
     assert.equal(state.enabled, false);
-    assert.deepEqual(state.items, raw.items);
+    assert.deepEqual(state.items, raw.items.map(item => ({ ...item, sendImage: true })));
     assert.deepEqual(selectWardrobe(state, owner.characterKey, 'bot').items.map(item => item.id), ['shirt', 'ring']);
     assert.deepEqual(state.assignments[0].itemIds, ['dress', 'shirt', 'ring']);
     assert.equal(selectWardrobe(state, owner.characterKey, 'user').items[0].id, 'dress');

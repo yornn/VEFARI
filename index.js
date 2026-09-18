@@ -124,13 +124,6 @@ function render() {
         const heading = document.createElement('strong');
         heading.className = 'vefari_card_title';
         heading.textContent = item.name;
-        const metadata = document.createElement('div');
-        metadata.className = 'vefari_card_meta';
-        const category = document.createElement('span');
-        category.textContent = CATEGORIES[item.category];
-        metadata.append(category);
-        const description = document.createElement('p');
-        description.textContent = item.description;
         const actions = document.createElement('div');
         actions.className = 'vefari_card_actions';
         for (const [action, label] of [['edit', 'Изменить'], ['delete', 'Удалить']]) {
@@ -141,7 +134,7 @@ function render() {
             control.append(createIcon(action));
             actions.append(control);
         }
-        card.append(metadata, heading, description, actions);
+        card.append(heading, actions);
         list.append(card);
     }
     if (!list.childElementCount) {
@@ -222,6 +215,8 @@ function editItem(item) {
     field('audience').value = item.audiences.length === 2 ? 'both' : item.audiences[0];
     field('remove_image').disabled = !item.imagePath;
     field('export_item').disabled = !item.imagePath;
+    field('send_image').checked = item.sendImage !== false;
+    field('send_text').checked = item.sendImage === false;
     appendImage(field('editor_image'), item);
     showEditor(false);
     field('name').focus();
@@ -390,6 +385,7 @@ async function handleSave() {
         category: field('category').value,
         audiences: field('audience').value === 'both' ? ['bot', 'user'] : [field('audience').value],
         imagePath: field('remove_image').checked ? '' : previous?.imagePath || '',
+        sendImage: field('send_image').checked,
     };
     validateItem(data);
     if (itemId && !previous) throw new Error('Редактируемая вещь уже удалена.');
@@ -471,6 +467,11 @@ async function init() {
         });
     }
     field('filter').addEventListener('change', refreshView);
+    field('image').addEventListener('change', () => {
+        const file = field('image').files[0];
+        if (!file || field('name').value.trim()) return;
+        field('name').value = file.name.replace(/\.[^.]+$/, '');
+    });
     field('import').addEventListener('click', () => {
         if (!mayDiscardDraft()) return;
         field('import_file').click();

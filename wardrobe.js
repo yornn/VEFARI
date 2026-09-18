@@ -40,10 +40,11 @@ export function validateItem(input) {
     const description = requiredText(input.description, 'Описание');
     if (!Object.hasOwn(CATEGORIES, input.category)) throw new Error('Неизвестная категория вещи.');
     if (input.imagePath != null && typeof input.imagePath !== 'string') throw new Error('Некорректный путь картинки.');
+    if (input.sendImage != null && typeof input.sendImage !== 'boolean') throw new Error('Некорректный режим отправки картинки.');
     if (!Array.isArray(input.audiences) || !input.audiences.length
         || input.audiences.some(target => !TARGETS.includes(target))) throw new Error('Выберите коллекцию User или Char.');
     const audiences = TARGETS.filter(target => input.audiences.includes(target));
-    return { id, name, description, category: input.category, imagePath: input.imagePath || '', audiences };
+    return { id, name, description, category: input.category, imagePath: input.imagePath || '', audiences, sendImage: input.sendImage !== false };
 }
 
 function assignmentFor(state, characterKey, target) {

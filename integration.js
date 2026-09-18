@@ -87,7 +87,7 @@ export function createController(getContext, { readImage = loadReference, report
         async getImageReferences(target = 'bot') {
             if (!TARGETS.includes(target)) throw new Error('Неизвестный владелец наряда.');
             const snapshot = view().snapshot;
-            const images = snapshot?.[target].items.filter(item => item.imagePath) || [];
+            const images = snapshot?.[target].items.filter(item => item.imagePath && item.sendImage !== false) || [];
             return Promise.all(images.map(async item => ({ ...item, ...await readImage(item.imagePath) })));
         },
     });

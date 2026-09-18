@@ -139,9 +139,15 @@ test('public snapshots are isolated and text-only or disabled outfits do not loa
     assert.equal(api.getActiveOutfits().bot.items[0].description, 'coat description');
     assert.deepEqual(await api.getImageReferences(), []);
     h.controller.dispatch({ type: 'edit-item', item: { ...garment('coat'), imagePath: '/user/images/vefari_refs/coat.png' } });
+    assert.equal((await api.getImageReferences()).length, 1);
+    assert.equal(reads, 1);
+    h.controller.dispatch({ type: 'edit-item', item: { ...garment('coat'), imagePath: '/user/images/vefari_refs/coat.png', sendImage: false } });
+    assert.deepEqual(await api.getImageReferences(), []);
+    assert.equal(reads, 1);
+    h.controller.dispatch({ type: 'edit-item', item: { ...garment('coat'), imagePath: '/user/images/vefari_refs/coat.png' } });
     h.controller.dispatch({ type: 'set-enabled', enabled: false });
     assert.deepEqual(await api.getImageReferences(), []);
-    assert.equal(reads, 0);
+    assert.equal(reads, 1);
     h.context.characterId = undefined;
     assert.equal(api.getActiveOutfits(), null);
     await assert.rejects(api.getImageReferences('npc'));
