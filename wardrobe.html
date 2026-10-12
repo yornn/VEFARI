@@ -41,20 +41,37 @@
             </section>
             <section id="vefari_settings_panel" aria-labelledby="vefari_settings_title" hidden>
                 <div class="vefari_section_heading"><h3 id="vefari_settings_title" tabindex="-1">Настройки</h3><button id="vefari_back" class="vefari_button vefari_button_quiet" type="button"><span data-icon="back"></span>К нарядам</button></div>
-                <section class="vefari_settings_card" aria-label="Настройки гардероба">
-                    <label class="vefari_checkbox"><input id="vefari_enabled" type="checkbox"><span>Включить гардероб и текстовый инжект</span></label>
-                    <div class="vefari_settings_group" role="group" aria-label="Генератор картинок">
-                        <label class="vefari_checkbox"><input id="vefari_generator_images" type="checkbox"><span>Картинки нарядов в генератор</span></label>
-                        <label class="vefari_field">Максимум картинок нарядов <input id="vefari_image_limit" type="number" min="1" max="10" step="1" inputmode="numeric"></label>
-                        <p class="vefari_hint">Для notsosillynotsoimages (Gemini-compatible): в момент генерации картинки наряды тех, кого генератор отправляет лицом, добавляются референсами. Выключено или сверх лимита — вещи уходят только описанием.</p>
-                        <p class="vefari_hint">Последняя отправка в генератор: <span id="vefari_bridge_report"></span></p>
-                    </div>
-                    <details><summary>Текст текущего инжекта</summary><pre id="vefari_prompt"></pre></details>
-                    <div class="vefari_row">
+                <div class="vefari_divider" aria-hidden="true"><span data-icon="othala"></span></div>
+                <div class="vefari_settings_grid">
+                    <section class="vefari_settings_block" aria-labelledby="vefari_settings_wardrobe">
+                        <h4 id="vefari_settings_wardrobe">Гардероб</h4>
+                        <label class="vefari_rune_toggle"><input id="vefari_enabled" class="vefari_visually_hidden" type="checkbox"><span class="vefari_rune_box" data-icon="algiz"></span><span>Гардероб включён: одежда уходит модели</span></label>
+                        <p class="vefari_hint">Выключение сразу очищает инжект, вещи остаются.</p>
+                    </section>
+                    <section class="vefari_settings_block" aria-labelledby="vefari_settings_generator">
+                        <h4 id="vefari_settings_generator">Генератор картинок</h4>
+                        <label class="vefari_rune_toggle"><input id="vefari_generator_images" class="vefari_visually_hidden" type="checkbox"><span class="vefari_rune_box" data-icon="algiz"></span><span>Картинки нарядов в генератор</span></label>
+                        <div class="vefari_limit">
+                            <label for="vefari_image_limit">Максимум картинок</label>
+                            <div class="vefari_stepper">
+                                <button id="vefari_limit_down" class="vefari_icon_button" type="button" aria-label="Меньше картинок"><span data-icon="minus"></span></button>
+                                <input id="vefari_image_limit" type="number" min="1" max="10" step="1" inputmode="numeric">
+                                <button id="vefari_limit_up" class="vefari_icon_button" type="button" aria-label="Больше картинок"><span data-icon="plus"></span></button>
+                            </div>
+                        </div>
+                        <p class="vefari_hint">Последняя отправка: <span id="vefari_bridge_report"></span></p>
+                        <p class="vefari_hint">Для notsosillynotsoimages (Gemini-compatible): наряды тех, кого генератор рисует, уходят референсами; сверх лимита — только описанием.</p>
+                    </section>
+                    <section class="vefari_settings_block" aria-labelledby="vefari_settings_exchange">
+                        <h4 id="vefari_settings_exchange">Обмен</h4>
                         <button id="vefari_export_all" class="vefari_button" type="button"><span data-icon="export"></span>Экспорт всех нарядов</button>
-                    </div>
-                    <p class="vefari_hint">Скачивает ZIP: картинка каждой вещи со вшитым в неё описанием. Категории и коллекции не выгружаются — при импорте их выбирает получатель.</p>
-                </section>
+                        <p class="vefari_hint">ZIP: в каждую картинку вшито описание вещи.</p>
+                    </section>
+                    <section class="vefari_settings_block" aria-labelledby="vefari_settings_prompt">
+                        <h4 id="vefari_settings_prompt">Текст инжекта</h4>
+                        <pre id="vefari_prompt"></pre>
+                    </section>
+                </div>
             </section>
             <section id="vefari_editor_panel" aria-labelledby="vefari_editor_title" hidden>
                 <div class="vefari_section_heading"><h3 id="vefari_editor_title" tabindex="-1">Новая вещь</h3><button id="vefari_editor_back" class="vefari_button vefari_button_quiet" type="button"><span data-icon="back"></span>К нарядам</button></div>

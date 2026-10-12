@@ -3,7 +3,7 @@
  * UI for the VEFARI command-based wardrobe controller.
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-import { CATEGORIES, VERSION, categoriesForMode, validateItem } from './wardrobe.js';
+import { CATEGORIES, MAX_IMAGE_REFS, VERSION, categoriesForMode, validateItem } from './wardrobe.js';
 import { createController } from './integration.js';
 import { createId } from './ids.js';
 import { retainedImages } from './storage.js';
@@ -444,6 +444,18 @@ async function init() {
     field('image_limit').addEventListener('change', () => runAction(() => {
         controller.dispatch({ type: 'set-image-limit', limit: Number(field('image_limit').value) });
     }).finally(refreshView));
+    for (const [id, step] of [['limit_down', -1], ['limit_up', 1]]) {
+        field(id).addEventListener('click', () => {
+            const current = controller.view().state.maxImageRefs;
+            const limit = Math.min(MAX_IMAGE_REFS, Math.max(1, current + step));
+            if (limit === current) return;
+            // The busy lock blurs the button; give focus back so the stepper can be pressed again.
+            void runAction(() => controller.dispatch({ type: 'set-image-limit', limit })).finally(() => {
+                refreshView();
+                if (settingsOpen) field(id).focus({ preventScroll: true });
+            });
+        });
+    }
     for (const tab of root.querySelectorAll('[role="tab"]')) {
         tab.addEventListener('click', () => switchTarget(tab.dataset.target));
         tab.addEventListener('keydown', event => {

@@ -101,9 +101,7 @@ select {
 input::placeholder, textarea::placeholder { color: var(--vefari-ash-dim); opacity: 1; }
 input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus { outline: none; border-color: var(--vefari-frost); }
 textarea { min-height: 112px; max-height: 300px; resize: vertical; }
-input[type="checkbox"] { appearance: auto; flex: 0 0 auto; width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--vefari-frost); }
 .vefari_field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; min-width: 0; color: #a9b4ba; font-size: 12px; }
-.vefari_checkbox { display: flex; align-items: flex-start; gap: 9px; margin-bottom: 14px; font-size: 13px; color: #d6dde1; }
 
 /* Cells: a strict row of radio choices (mode, collection, send mode). */
 .vefari_cells { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); min-width: 0; margin: 0; padding: 0; border: 1px solid var(--vefari-iron-strong); }
@@ -211,10 +209,30 @@ input[type="checkbox"] { appearance: auto; flex: 0 0 auto; width: 16px; height: 
     .vefari_card_actions { opacity: 1; }
 }
 
-/* Settings (base until its own pass) */
-.vefari_settings_card { min-width: 0; max-width: 760px; padding: 16px; border: 1px solid var(--vefari-iron); background: var(--vefari-slate); }
-.vefari_settings_group { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--vefari-iron); }
-.vefari_settings_group > .vefari_hint, .vefari_settings_card > .vefari_hint { margin-top: 12px; }
+/* Settings: full width, four blocks, rune seals instead of switches. */
+#vefari_controls[data-view="settings"] { grid-template-columns: minmax(0, 1fr); }
+[data-view="settings"] #vefari_armory { display: none; }
+.vefari_divider { display: flex; align-items: center; gap: 12px; margin: -4px 0 16px; color: var(--vefari-frost-deep); }
+.vefari_divider::before, .vefari_divider::after { content: ''; flex: 1; height: 1px; background: var(--vefari-iron); }
+.vefari_divider .vefari_icon { width: 16px; height: 16px; stroke-width: 1.3; }
+.vefari_settings_grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); align-items: start; gap: 12px; }
+.vefari_settings_block { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-width: 0; padding: 14px 16px 16px; border: 1px solid var(--vefari-iron); background: var(--vefari-slate); }
+.vefari_settings_block h4 { color: var(--vefari-frost); font: 500 12px/1.2 var(--vefari-caps); letter-spacing: 0.1em; }
+.vefari_settings_block .vefari_hint { margin: 0; }
+.vefari_rune_toggle { position: relative; display: flex; align-items: center; gap: 10px; color: #d6dde1; font-size: 14px; line-height: 1.35; cursor: pointer; }
+.vefari_rune_box { display: grid; place-items: center; flex: 0 0 auto; width: 22px; height: 22px; border: 1px solid var(--vefari-iron-strong); color: var(--vefari-ash-dim); transition: border-color 140ms var(--vefari-ease), color 140ms var(--vefari-ease), box-shadow 140ms var(--vefari-ease); }
+.vefari_rune_box .vefari_icon { width: 16px; height: 16px; stroke-width: 1.6; }
+.vefari_rune_toggle:hover .vefari_rune_box { border-color: var(--vefari-steel); }
+.vefari_rune_toggle input:checked + .vefari_rune_box { border-color: var(--vefari-frost); color: var(--vefari-frost); box-shadow: inset 0 0 0 2px var(--vefari-night), inset 0 0 0 3px #9fc3d666; }
+.vefari_rune_toggle input:focus-visible + .vefari_rune_box { outline: 1px solid var(--vefari-frost); outline-offset: 2px; }
+.vefari_limit { display: flex; align-items: center; justify-content: space-between; gap: 12px; align-self: stretch; color: #a9b4ba; font-size: 13px; }
+.vefari_stepper { display: flex; border: 1px solid var(--vefari-iron-strong); }
+.vefari_stepper .vefari_icon_button { width: 32px; height: 32px; min-height: 0; padding: 7px; border: 0; }
+.vefari_stepper .vefari_icon { width: 16px; height: 16px; }
+.vefari_stepper input[type="number"] { width: 44px; padding: 4px; border-width: 0 1px; text-align: center; appearance: textfield; -moz-appearance: textfield; }
+.vefari_stepper input::-webkit-inner-spin-button, .vefari_stepper input::-webkit-outer-spin-button { margin: 0; -webkit-appearance: none; }
+.vefari_settings_block:has(#vefari_prompt) { grid-column: 1 / -1; }
+#vefari_prompt { align-self: stretch; max-height: 220px; margin: 0; padding: 10px 12px; overflow-y: auto; border: 1px solid var(--vefari-iron); background: var(--vefari-deep); color: #b9c3c9; font: 12px/1.6 ui-monospace, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* Editor: picture on the left, fields on the right, actions pinned to the bottom. */
 .vefari_scroll { --vefari-pad: 20px; }
@@ -256,9 +274,6 @@ input[type="checkbox"] { appearance: auto; flex: 0 0 auto; width: 16px; height: 
 #vefari_export_item { margin-left: auto; }
 #vefari_armory { transition: opacity 220ms var(--vefari-ease); }
 [data-view="editor"] #vefari_armory { opacity: 0.55; }
-details { margin-top: 16px; border-top: 1px solid var(--vefari-iron); }
-summary { padding: 12px 0 0; color: var(--vefari-frost); font-size: 12px; cursor: pointer; }
-#vefari_prompt { padding: 12px; margin: 12px 0 0; border: 1px solid var(--vefari-iron); background: var(--vefari-deep); color: #b9c3c9; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.6 ui-monospace, Consolas, monospace; max-height: 220px; overflow-y: auto; }
 
 /* Messages */
 #vefari_status { position: relative; z-index: 1; flex-shrink: 0; max-height: 96px; padding: 9px 20px 9px 18px; overflow-y: auto; border-top: 1px solid var(--vefari-iron); border-left: 2px solid var(--vefari-frost); background: var(--vefari-slate); color: #cfe0ea; font-size: 13px; overflow-wrap: anywhere; }

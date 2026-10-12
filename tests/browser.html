@@ -237,6 +237,13 @@
             check(prompt() === '[OUTFIT: Alice is currently wearing: FULL: A green wool coat.]\n[OUTFIT: Player is currently wearing: FULL: A green wool coat.]', 'Shared item produces separate bracketed blocks for both participants');
             field('settings_toggle').click();
             check(field('generator_images').checked && field('image_limit').value === '4' && field('bridge_report').textContent === 'ещё не было', 'Generator bridge settings show defaults and an empty report');
+            check(getComputedStyle(field('settings_title')).outlineStyle === 'none', 'Programmatic focus on the settings heading draws no frame');
+            check(field('armory').getBoundingClientRect().width === 0 && field('prompt').getClientRects().length > 0, 'Settings use the full width and show the injection text without expanding');
+            check(field('enabled').closest('.vefari_rune_toggle')?.querySelector('svg'), 'Switches are rune seals over real checkboxes');
+            field('limit_up').click(); await idle();
+            check(context.extensionSettings.vefari.maxImageRefs === 5 && field('image_limit').value === '5', 'Stepper raises the image limit');
+            field('limit_down').click(); await idle();
+            check(context.extensionSettings.vefari.maxImageRefs === 4, 'Stepper lowers the image limit');
             field('generator_images').checked = false;
             field('generator_images').dispatchEvent(new Event('change'));
             await idle();
