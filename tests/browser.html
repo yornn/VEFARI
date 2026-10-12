@@ -99,6 +99,10 @@
         const settle = () => new Promise(resolve => setTimeout(resolve, 25));
         const idle = () => wait(() => !field('controls').inert);
         const open = async () => { field('menu').click(); await wait(() => document.querySelector('.vefari_popup[open]')); };
+        const choose = id => {
+            field(id).checked = true;
+            field(id).dispatchEvent(new Event('change', { bubbles: true }));
+        };
         const change = (id, value) => {
             field(id).value = value;
             field(id).dispatchEvent(new Event('change', { bubbles: true }));
@@ -176,8 +180,9 @@
             field('back').click();
             field('add').click();
             check(field('settings_panel').hidden && !field('editor_panel').hidden && field('collection_panel').hidden, 'Add opens a separate editor screen');
+            check(field('editor_title').textContent === 'Новая вещь' && field('export_item').hidden && field('image_actions').hidden, 'A new item has no export or image actions');
             check(field('editor_panel').scrollWidth <= field('editor_panel').clientWidth + 1 && field('form').scrollWidth <= field('form').clientWidth + 1, 'Editor fits the viewport without horizontal scrolling');
-            check(field('audience').value === 'user', 'New item defaults to the active User collection');
+            check(field('audience_user').checked, 'New item defaults to the active User collection');
             input('name', '<img src=x onerror="window.xssExecuted=true">');
             input('description', 'A blue wool coat');
             await save();
@@ -224,7 +229,7 @@
             field('tab_bot').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
             check(field('tab_user').getAttribute('aria-selected') === 'true', 'Arrow keys switch tabs with accessible selection state');
             await click('edit', coat.id);
-            change('audience', 'both');
+            choose('audience_both');
             input('description', 'A green wool coat');
             await save();
             field('tab_bot').click();
@@ -307,6 +312,7 @@
             field('image').files = transfer.files;
             field('image').dispatchEvent(new Event('change', { bubbles: true }));
             check(field('name').value === 'reference', 'Choosing an image pre-fills the item name from the file name');
+            check(field('editor_image').querySelector('img'), 'A chosen picture previews inside the drop zone');
             input('name', 'Boots');
             field('image').dispatchEvent(new Event('change', { bubbles: true }));
             check(field('name').value === 'Boots', 'Choosing an image never overwrites a typed name');
@@ -325,6 +331,13 @@
             await decoded.decode();
             check(decoded.naturalWidth === 1024 && decoded.naturalHeight === 512, 'Reference is resized proportionally');
             await click('edit', boots.id);
+            check(!field('image_actions').hidden && field('armory').inert && field('controls').dataset.view === 'editor', 'Editing an item with a picture offers replace/remove and locks the armory');
+            const kept = field('description').value;
+            input('description', '   ');
+            field('form').requestSubmit();
+            await idle();
+            check(field('status').dataset.error === 'true' && field('armory').inert && !field('editor_panel').hidden, 'A failed save keeps the editor open and the armory locked');
+            input('description', kept);
             check(field('send_image').checked && !field('send_text').checked, 'Editor defaults image items to picture and text mode');
             field('send_text').checked = true;
             field('send_text').dispatchEvent(new Event('change', { bubbles: true }));
@@ -345,7 +358,7 @@
             };
             await click('edit', boots.id);
             check(field('send_text').checked && !field('send_image').checked, 'Editor restores the saved text-only mode');
-            check(!field('export_item').disabled, 'Editor export is enabled for items with an image');
+            check(!field('export_item').hidden, 'Editor export is shown for items with an image');
             field('export_item').click();
             await idle();
             const exportedPng = new Uint8Array(await downloads.at(-1).arrayBuffer());
@@ -364,7 +377,7 @@
             field('import_file').dispatchEvent(new Event('change'));
             await idle();
             check(!field('editor_panel').hidden && field('description').value === 'Льняная рубаха с вышивкой на плечах.', 'Import pulls the embedded outfit text out of the PNG');
-            check(field('name').value === 'рубаха' && !field('export_item').disabled, 'Import pre-fills the name from the file and allows re-export');
+            check(field('name').value === 'рубаха' && !field('export_item').hidden, 'Import pre-fills the name from the file and allows re-export');
             change('category', 'top');
             await save();
             const shirt = context.extensionSettings.vefari.items.find(item => item.name === 'рубаха');
@@ -379,6 +392,8 @@
 
             await click('edit', boots.id);
             field('remove_image').checked = true;
+            field('remove_image').dispatchEvent(new Event('change', { bubbles: true }));
+            check(field('dropzone').dataset.removing === 'true', 'Remove marks the picture for deletion');
             await save();
             check((await fetch(references[0].imagePath)).status === 404 && prompt().includes('Black leather boots'), 'Removing an image deletes the unused file and retains text injection');
             await click('delete', boots.id);

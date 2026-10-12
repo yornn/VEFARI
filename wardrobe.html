@@ -57,33 +57,49 @@
                 </section>
             </section>
             <section id="vefari_editor_panel" aria-labelledby="vefari_editor_title" hidden>
-                <div class="vefari_section_heading"><h3 id="vefari_editor_title" tabindex="-1">Добавить вещь</h3><button id="vefari_editor_back" class="vefari_button vefari_button_quiet" type="button"><span data-icon="back"></span>К нарядам</button></div>
-                <section class="vefari_editor" aria-label="Редактор вещи">
-                    <form id="vefari_form">
-                        <label class="vefari_field">Название <input id="vefari_name" type="text" maxlength="200" placeholder="Например, Северный плащ" required></label>
-                        <div class="vefari_form_row">
-                            <label class="vefari_field">Коллекция <select id="vefari_audience"><option value="user">USER</option><option value="bot">CHAR</option><option value="both">USER и CHAR</option></select></label>
-                            <label class="vefari_field">Категория <select id="vefari_category"></select></label>
-                        </div>
-                        <label class="vefari_field">Описание для модели <textarea id="vefari_description" rows="4" placeholder="Материал, цвет, крой и важные детали…" required></textarea></label>
-                        <label class="vefari_field vefari_upload">Референс <span class="vefari_hint">Необязательно · PNG / JPEG / WebP · до 10 МБ</span><input id="vefari_image" type="file" accept="image/png,image/jpeg,image/webp"></label>
-                        <div id="vefari_editor_image"></div>
-                        <label class="vefari_checkbox"><input id="vefari_remove_image" type="checkbox"><span>Убрать сохранённую картинку</span></label>
-                        <fieldset class="vefari_send_mode">
-                            <legend>Что отправлять для этой вещи</legend>
-                            <div class="vefari_segmented">
-                                <label class="vefari_segment"><input id="vefari_send_image" type="radio" name="vefari_send_mode" value="image" checked><span>Картинка и текст</span></label>
-                                <label class="vefari_segment"><input id="vefari_send_text" type="radio" name="vefari_send_mode" value="text"><span>Только текст</span></label>
+                <div class="vefari_section_heading"><h3 id="vefari_editor_title" tabindex="-1">Новая вещь</h3><button id="vefari_editor_back" class="vefari_button vefari_button_quiet" type="button"><span data-icon="back"></span>К нарядам</button></div>
+                <form id="vefari_form" class="vefari_editor" aria-label="Редактор вещи">
+                    <div class="vefari_editor_grid">
+                        <div class="vefari_editor_media">
+                            <div id="vefari_dropzone" class="vefari_dropzone" data-removing="false">
+                                <div id="vefari_editor_image"></div>
+                                <p class="vefari_dropzone_hint"><span data-icon="image"></span>Перетащите или выберите картинку<small>PNG, JPEG, WebP до 10 МБ</small></p>
+                                <input id="vefari_image" type="file" accept="image/png,image/jpeg,image/webp" aria-label="Картинка вещи: перетащите или выберите файл">
                             </div>
-                        </fieldset>
-                        <div class="vefari_row">
-                            <button class="vefari_button vefari_button_primary" type="submit">Сохранить вещь</button>
-                            <button id="vefari_export_item" class="vefari_button vefari_button_quiet" type="button" disabled><span data-icon="export"></span>Экспорт</button>
-                            <button id="vefari_cancel" class="vefari_button vefari_button_quiet" type="button">Отмена</button>
+                            <div id="vefari_image_actions" class="vefari_row" hidden>
+                                <button id="vefari_replace_image" class="vefari_button" type="button">Заменить</button>
+                                <label class="vefari_button vefari_button_quiet vefari_toggle_button"><input id="vefari_remove_image" class="vefari_visually_hidden" type="checkbox"><span>Убрать</span></label>
+                            </div>
                         </div>
-                    </form>
-                    <p class="vefari_hint">Описание всегда попадает в чат. «Картинка и текст» дополнительно отправляет картинку вещи в генератор картинок; «Только текст» — только описание, картинка остаётся сохранённой. Экспорт скачивает PNG со вшитым описанием — так наряд можно передать.</p>
-                </section>
+                        <div class="vefari_editor_fields">
+                            <label class="vefari_field">Название <input id="vefari_name" type="text" maxlength="200" placeholder="Северный плащ" required></label>
+                            <div class="vefari_form_row">
+                                <fieldset id="vefari_audience" class="vefari_field vefari_fieldset">
+                                    <legend>Коллекция</legend>
+                                    <div class="vefari_cells">
+                                        <label class="vefari_cell"><input id="vefari_audience_user" type="radio" name="vefari_audience" value="user" checked><span>User</span></label>
+                                        <label class="vefari_cell"><input id="vefari_audience_bot" type="radio" name="vefari_audience" value="bot"><span>Char</span></label>
+                                        <label class="vefari_cell"><input id="vefari_audience_both" type="radio" name="vefari_audience" value="both"><span>Оба</span></label>
+                                    </div>
+                                </fieldset>
+                                <label class="vefari_field">Категория <select id="vefari_category"></select></label>
+                            </div>
+                            <label class="vefari_field">Описание для модели <textarea id="vefari_description" rows="4" placeholder="Плотная шерсть цвета пепла, подбитая волчьим мехом, железная фибула у горла" required></textarea><span class="vefari_hint">Описание всегда уходит в чат; картинка — только в генератор картинок.</span></label>
+                            <fieldset class="vefari_field vefari_fieldset vefari_send_mode">
+                                <legend>Что отправлять в генератор</legend>
+                                <div class="vefari_cells">
+                                    <label class="vefari_cell"><input id="vefari_send_image" type="radio" name="vefari_send_mode" value="image" checked><span>Картинка и текст</span></label>
+                                    <label class="vefari_cell"><input id="vefari_send_text" type="radio" name="vefari_send_mode" value="text"><span>Только текст</span></label>
+                                </div>
+                            </fieldset>
+                        </div>
+                    </div>
+                    <div class="vefari_editor_footer">
+                        <button class="vefari_button vefari_button_primary" type="submit">Сохранить вещь</button>
+                        <button id="vefari_cancel" class="vefari_button vefari_button_quiet" type="button">Отмена</button>
+                        <button id="vefari_export_item" class="vefari_icon_button" type="button" title="Экспорт PNG со вшитым описанием" aria-label="Экспорт PNG со вшитым описанием" hidden><span data-icon="export"></span></button>
+                    </div>
+                </form>
             </section>
         </div>
     </div>

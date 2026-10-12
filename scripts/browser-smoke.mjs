@@ -181,7 +181,7 @@ try {
     }
     if (process.env.VEFARI_EDITOR_SCREENSHOT) {
         await evaluate(`${shadow}.getElementById('vefari_add').click()`);
-        await evaluate(`${shadow}.querySelector('.vefari_send_mode').scrollIntoView({ block: 'center' })`);
+        await evaluate(`${shadow}.querySelector('.vefari_editor_footer').scrollIntoView({ block: 'end' })`);
         const image = await devtools.send('Page.captureScreenshot', { format: 'png' });
         await writeFile(process.env.VEFARI_EDITOR_SCREENSHOT, Buffer.from(image.data, 'base64'));
         console.log(`Editor screenshot: ${process.env.VEFARI_EDITOR_SCREENSHOT}`);

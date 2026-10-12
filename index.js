@@ -116,6 +116,7 @@ function showSettings(show, focus = true) {
     field('collection_panel').hidden = show;
     field('settings_toggle').setAttribute('aria-expanded', String(show));
     field('controls').dataset.view = show ? 'settings' : 'collection';
+    field('armory').inert = false;
     if (focus) field(show ? 'settings_title' : `tab_${target}`).focus({ preventScroll: true });
 }
 
@@ -127,6 +128,8 @@ function showEditor(focus = true) {
     field('collection_panel').hidden = true;
     field('settings_toggle').setAttribute('aria-expanded', 'false');
     field('controls').dataset.view = 'editor';
+    // Owner switches stay visible for context but cannot pull the draft out from under the editor.
+    field('armory').inert = true;
     if (focus) field('editor_title').focus({ preventScroll: true });
 }
 
@@ -163,12 +166,23 @@ function resetEditor() {
     editingId = null;
     pendingImport = null;
     field('form').reset();
-    field('editor_title').textContent = 'Добавить вещь';
+    field('editor_title').textContent = 'Новая вещь';
     field('editor_image').replaceChildren();
-    field('remove_image').disabled = true;
-    field('export_item').disabled = true;
-    field('audience').value = target;
+    field('dropzone').dataset.removing = 'false';
+    field('image_actions').hidden = true;
+    field('export_item').hidden = true;
+    field(`audience_${target}`).checked = true;
     dirty = false;
+}
+
+function showPicked(file) {
+    const preview = document.createElement('img');
+    const url = URL.createObjectURL(file);
+    preview.src = url;
+    preview.alt = '';
+    preview.addEventListener('load', () => URL.revokeObjectURL(url), { once: true });
+    preview.addEventListener('error', () => URL.revokeObjectURL(url), { once: true });
+    field('editor_image').replaceChildren(preview);
 }
 
 function editItem(item) {
@@ -178,9 +192,9 @@ function editItem(item) {
     field('name').value = item.name;
     field('description').value = item.description;
     field('category').value = item.category;
-    field('audience').value = item.audiences.length === 2 ? 'both' : item.audiences[0];
-    field('remove_image').disabled = !item.imagePath;
-    field('export_item').disabled = !item.imagePath;
+    field(`audience_${item.audiences.length === 2 ? 'both' : item.audiences[0]}`).checked = true;
+    field('image_actions').hidden = !item.imagePath;
+    field('export_item').hidden = !item.imagePath;
     field('send_image').checked = item.sendImage !== false;
     field('send_text').checked = item.sendImage === false;
     appendImage(field('editor_image'), item);
@@ -258,13 +272,8 @@ function importItem(file, description) {
     field('editor_title').textContent = 'Импорт вещи';
     field('name').value = baseName;
     field('description').value = description;
-    field('export_item').disabled = false;
-    const preview = document.createElement('img');
-    const url = URL.createObjectURL(file);
-    preview.src = url;
-    preview.alt = baseName;
-    preview.addEventListener('load', () => URL.revokeObjectURL(url), { once: true });
-    field('editor_image').replaceChildren(preview);
+    field('export_item').hidden = false;
+    showPicked(file);
     dirty = true;
     showEditor(false);
     field('name').focus();
@@ -344,12 +353,13 @@ async function handleSave() {
     const settings = controller.view().state;
     const itemId = editingId;
     const previous = settings.items.find(item => item.id === editingId);
+    const audience = root.querySelector('input[name="vefari_audience"]:checked').value;
     const data = {
         id: itemId || createId(),
         name: field('name').value.trim(),
         description: field('description').value.trim(),
         category: field('category').value,
-        audiences: field('audience').value === 'both' ? ['bot', 'user'] : [field('audience').value],
+        audiences: audience === 'both' ? ['bot', 'user'] : [audience],
         imagePath: field('remove_image').checked ? '' : previous?.imagePath || '',
         sendImage: field('send_image').checked,
     };
@@ -450,8 +460,16 @@ async function init() {
     });
     field('image').addEventListener('change', () => {
         const file = field('image').files[0];
-        if (!file || field('name').value.trim()) return;
-        field('name').value = file.name.replace(/\.[^.]+$/, '');
+        if (!file) return;
+        // A new picture supersedes a pending removal of the saved one.
+        field('remove_image').checked = false;
+        field('dropzone').dataset.removing = 'false';
+        showPicked(file);
+        if (!field('name').value.trim()) field('name').value = file.name.replace(/\.[^.]+$/, '');
+    });
+    field('replace_image').addEventListener('click', () => field('image').click());
+    field('remove_image').addEventListener('change', () => {
+        field('dropzone').dataset.removing = String(field('remove_image').checked);
     });
     field('import').addEventListener('click', () => {
         if (!mayDiscardDraft()) return;
