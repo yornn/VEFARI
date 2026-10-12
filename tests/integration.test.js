@@ -4,7 +4,14 @@ import test from 'node:test';
 import { createController } from '../integration.js';
 import { garment, inventory, owner, wear } from './fixtures.js';
 
+function fakeScope() {
+    const scope = { sent: [] };
+    scope.fetch = scope.original = (input, init) => { scope.sent.push([input, init]); return Promise.resolve('ok'); };
+    return scope;
+}
+
 function host(options = {}) {
+    const scope = fakeScope();
     const prompts = new Map();
     const errors = [];
     let saves = 0;
@@ -17,9 +24,9 @@ function host(options = {}) {
         saveSettingsDebounced: () => saves++,
         setExtensionPrompt: (key, ...args) => prompts.set(key, args),
     };
-    const controller = createController(() => context, { reportError: error => errors.push(error), ...options });
+    const controller = createController(() => context, { reportError: error => errors.push(error), scope, ...options });
     return {
-        controller, prompts, errors,
+        controller, prompts, errors, scope,
         get context() { return context; },
         get saves() { return saves; },
         switchContext(next) { context = next; },
@@ -172,4 +179,87 @@ test('reference failures reject rather than silently dropping garments', async (
     const h = host({ readImage: async () => { throw new Error('Image unavailable'); } });
     h.controller.dispatch({ type: 'edit-item', item: { ...garment('coat'), imagePath: '/user/images/vefari_refs/coat.png' } });
     await assert.rejects(h.controller.api.getImageReferences(), /Image unavailable/);
+});
+const GENERATOR_URL = 'https://img.example/v1beta/models/m:generateContent';
+const geminiBody = (text = 'Alice in the rain') => JSON.stringify({
+    contents: [{ role: 'user', parts: [{ text }] }], generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
+});
+
+function bridgeHost(options = {}) {
+    const h = host({ readImage: async () => ({ mimeType: 'image/png', base64: 'COAT' }), ...options });
+    h.context.extensionSettings.inline_image_gen = {
+        apiType: 'gemini', endpoint: 'https://img.example', geminiSendRefs: true,
+        charRefAlways: false, userRefAlways: false, charRef: { name: '' }, userRef: { name: '' },
+    };
+    h.controller.dispatch({ type: 'edit-item', item: { ...garment('coat'), imagePath: '/user/images/vefari_refs/coat.png' } });
+    h.controller.connect();
+    return h;
+}
+
+const generate = (h, body = geminiBody()) => h.scope.fetch(GENERATOR_URL, { method: 'POST', body });
+const sentParts = h => JSON.parse(h.scope.sent.at(-1)[1].body).contents[0].parts;
+
+test('bridge adds outfit images to generator requests and records a report', async () => {
+    const h = bridgeHost();
+    let renders = 0;
+    h.controller.subscribe(() => renders++);
+    await generate(h);
+    const parts = sentParts(h);
+    assert.deepEqual(parts[1], { inlineData: { mimeType: 'image/png', data: 'COAT' } });
+    assert.ok(parts.at(-1).text.endsWith('FULL: coat description.]\n\nAlice in the rain'));
+    assert.deepEqual(h.controller.view().report, { sides: [{ name: 'Alice', images: ['full'], text: [] }] });
+    assert.equal(renders, 1);
+});
+
+test('disabled wardrobe leaves request untouched', async () => {
+    const h = bridgeHost();
+    h.controller.dispatch({ type: 'set-enabled', enabled: false });
+    const body = geminiBody();
+    await generate(h, body);
+    assert.equal(h.scope.sent.at(-1)[1].body, body);
+    assert.equal(h.controller.view().report, null);
+});
+
+test('missing image falls back to text', async t => {
+    const warn = t.mock.method(console, 'warn', () => {});
+    const h = bridgeHost({ readImage: async () => { throw new Error('gone'); } });
+    await generate(h);
+    const parts = sentParts(h);
+    assert.equal(parts.some(part => part.inlineData), false);
+    assert.match(parts.at(-1).text, /coat description/);
+    assert.deepEqual(h.controller.view().report, { sides: [{ name: 'Alice', images: [], text: ['full'] }] });
+    assert.equal(warn.mock.callCount(), 1);
+});
+
+test('non-generator requests and absent generator are untouched', async () => {
+    const h = bridgeHost();
+    const chat = { method: 'POST', body: geminiBody() };
+    await h.scope.fetch('/api/backends/chat-completions/generate', chat);
+    assert.equal(h.scope.sent.at(-1)[1], chat);
+    delete h.context.extensionSettings.inline_image_gen;
+    const image = { method: 'POST', body: geminiBody() };
+    await h.scope.fetch(GENERATOR_URL, image);
+    assert.equal(h.scope.sent.at(-1)[1], image);
+    assert.equal(h.controller.view().report, null);
+});
+
+test('malformed generator settings warn once', async () => {
+    const h = bridgeHost();
+    h.context.extensionSettings.inline_image_gen = { endpoint: 'x' };
+    const body = geminiBody();
+    await generate(h, body);
+    await generate(h, body);
+    assert.equal(h.errors.length, 1);
+    assert.match(h.errors[0].message, /не распознаны/);
+    assert.deepEqual(h.scope.sent.map(([, init]) => init.body), [body, body]);
+});
+
+test('dispose removes the interceptor', async () => {
+    const h = bridgeHost();
+    assert.notEqual(h.scope.fetch, h.scope.original);
+    h.controller.dispose();
+    assert.equal(h.scope.fetch, h.scope.original);
+    const body = geminiBody();
+    await generate(h, body);
+    assert.equal(h.scope.sent.at(-1)[1].body, body);
 });
