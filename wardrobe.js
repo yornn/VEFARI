@@ -12,11 +12,24 @@ export const CATEGORIES = Object.freeze({
     hair: 'Причёска',
 });
 export const TARGETS = Object.freeze(['bot', 'user']);
+export const MAX_IMAGE_REFS = 10;
 const MODES = ['full', 'parts'];
 const SEPARATES = new Set(['top', 'bottom', 'shoes']);
 
 export function createState() {
-    return { schemaVersion: SCHEMA_VERSION, enabled: true, items: [], assignments: [] };
+    return { schemaVersion: SCHEMA_VERSION, enabled: true, items: [], assignments: [], generatorImages: true, maxImageRefs: 4 };
+}
+
+export function validateImageLimit(limit) {
+    if (!Number.isInteger(limit) || limit < 1 || limit > MAX_IMAGE_REFS) {
+        throw new Error(`Лимит картинок нарядов — целое число от 1 до ${MAX_IMAGE_REFS}.`);
+    }
+    return limit;
+}
+
+export function validateGeneratorImages(enabled) {
+    if (typeof enabled !== 'boolean') throw new Error('Укажите, отправлять ли картинки нарядов.');
+    return enabled;
 }
 
 function requiredText(value, label) {
@@ -71,6 +84,10 @@ export function reduceWardrobe(state, command) {
         case 'set-enabled':
             if (typeof command.enabled !== 'boolean') throw new Error('Укажите состояние гардероба.');
             return { ...state, enabled: command.enabled };
+        case 'set-generator-images':
+            return { ...state, generatorImages: validateGeneratorImages(command.enabled) };
+        case 'set-image-limit':
+            return { ...state, maxImageRefs: validateImageLimit(command.limit) };
         case 'add-item': {
             const item = validateItem(command.item);
             if (state.items.some(entry => entry.id === item.id)) throw new Error('Идентификатор вещи уже существует.');

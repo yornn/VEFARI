@@ -1,6 +1,8 @@
 // VEFARI persistence boundary: validate stored data before it reaches the domain.
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { CATEGORIES, SCHEMA_VERSION, TARGETS, createState, validateItem, validateMode, validateOwner } from './wardrobe.js';
+import {
+    CATEGORIES, SCHEMA_VERSION, TARGETS, createState, validateGeneratorImages, validateImageLimit, validateItem, validateMode, validateOwner,
+} from './wardrobe.js';
 
 export const SETTINGS_KEY = 'vefari';
 const records = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -75,6 +77,9 @@ export function decodeSettings(raw) {
         items,
         assignments: raw.schemaVersion !== undefined
             ? parseAssignments(raw.assignments, items) : migratePrototype(raw, items),
+        // Bridge settings arrived without a schema bump: absent means default.
+        generatorImages: validateGeneratorImages(raw.generatorImages ?? true),
+        maxImageRefs: validateImageLimit(raw.maxImageRefs ?? 4),
     };
 }
 

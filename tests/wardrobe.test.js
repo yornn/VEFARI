@@ -8,7 +8,7 @@ const selection = state => selectWardrobe(state, owner.characterKey, owner.targe
 
 test('domain state is JSON-serializable and starts with no assignments', () => {
     const state = createState();
-    assert.deepEqual(state, { schemaVersion: 3, enabled: true, items: [], assignments: [] });
+    assert.deepEqual(state, { schemaVersion: 3, enabled: true, items: [], assignments: [], generatorImages: true, maxImageRefs: 4 });
     assert.deepEqual(JSON.parse(JSON.stringify(state)), state);
     assert.deepEqual(selection(state), { mode: 'full', items: [] });
     assert.equal(state.assignments.length, 0);
@@ -155,4 +155,13 @@ test('changing item audience removes only now-ineligible owner assignments', () 
     const next = reduceWardrobe(freezeDeep(state), { type: 'edit-item', item: { ...garment('coat'), audiences: ['user'] } });
     assert.equal(selection(next).items.length, 0);
     assert.equal(selectWardrobe(next, owner.characterKey, 'user').items.length, 1);
+});
+test('generator settings commands validate and never mutate', () => {
+    const state = freezeDeep(createState());
+    assert.equal(reduceWardrobe(state, { type: 'set-generator-images', enabled: false }).generatorImages, false);
+    assert.equal(reduceWardrobe(state, { type: 'set-image-limit', limit: 7 }).maxImageRefs, 7);
+    for (const limit of [0, 11, 2.5, '3', null]) {
+        assert.throws(() => reduceWardrobe(state, { type: 'set-image-limit', limit }), /от 1 до 10/);
+    }
+    assert.throws(() => reduceWardrobe(state, { type: 'set-generator-images', enabled: 'yes' }));
 });

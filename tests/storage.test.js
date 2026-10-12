@@ -101,3 +101,14 @@ test('schema 3 validates collection membership and does not revive mismatched as
     state.items[0].audiences = [];
     assert.throws(() => decodeSettings(state));
 });
+test('generator settings default when absent and are validated when present', () => {
+    const legacy = JSON.parse(JSON.stringify(wear(inventory(garment('coat')), 'coat')));
+    delete legacy.generatorImages;
+    delete legacy.maxImageRefs;
+    const state = decodeSettings(legacy);
+    assert.equal(state.generatorImages, true);
+    assert.equal(state.maxImageRefs, 4);
+    assert.equal(decodeSettings({ ...legacy, generatorImages: false, maxImageRefs: 9 }).maxImageRefs, 9);
+    assert.throws(() => decodeSettings({ ...legacy, maxImageRefs: 50 }));
+    assert.throws(() => decodeSettings({ ...legacy, generatorImages: 'no' }));
+});
