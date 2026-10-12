@@ -10,7 +10,7 @@ import { retainedImages } from './storage.js';
 import { deleteUnusedImage, imageUrl, loadReference, MAX_IMAGE_BYTES, prepareImage, uploadImage } from './images.js';
 import { createZip, embedOutfitText, extractOutfitText, safeFilename } from './transfer.js';
 import { createEmblem, createIcon, createRunes } from './icons.js';
-import { createSlot } from './render.js';
+import { createCard, createChip, createEmpty, createSlot } from './render.js';
 import { mountWardrobeWindow } from './window.js';
 import { formatReport } from './bridge.js';
 
@@ -41,17 +41,6 @@ function status(message = '', error = false) {
         if (message && !error) statusTimer = setTimeout(() => status(), STATUS_TIMEOUT_MS);
     }
     if (error) console.error('[VEFARI]', message);
-}
-
-function button(label, action, id, disabled = false) {
-    const element = document.createElement('button');
-    element.type = 'button';
-    element.className = 'vefari_button';
-    element.textContent = label;
-    element.dataset.action = action;
-    element.dataset.id = id;
-    element.disabled = disabled;
-    return element;
 }
 
 function appendImage(parent, item) {
@@ -105,51 +94,12 @@ function render() {
 
     const list = field('items');
     list.replaceChildren();
-    field('filter').value = filter;
+    for (const chip of field('filter').children) chip.setAttribute('aria-pressed', String(chip.dataset.filter === filter));
     for (const item of collection) {
         if (filter !== 'all' && item.category !== filter) continue;
-        const card = document.createElement('article');
-        card.className = 'vefari_card';
-        const worn = active.some(entry => entry.id === item.id);
-        card.dataset.worn = String(worn);
-        card.dataset.action = 'toggle';
-        card.dataset.id = item.id;
-        card.tabIndex = 0;
-        card.setAttribute('role', 'button');
-        card.setAttribute('aria-pressed', String(worn));
-        card.setAttribute('aria-label', worn ? `${item.name} — сейчас надето. Снять` : `Надеть: ${item.name}`);
-        appendImage(card, item);
-        if (!imageUrl(item.imagePath)) {
-            const placeholder = document.createElement('div');
-            placeholder.className = 'vefari_text_only';
-            placeholder.title = 'Текстовый наряд';
-            placeholder.append(createIcon('tunic'));
-            card.append(placeholder);
-        }
-        const heading = document.createElement('strong');
-        heading.className = 'vefari_card_title';
-        heading.textContent = item.name;
-        const actions = document.createElement('div');
-        actions.className = 'vefari_card_actions';
-        for (const [action, label] of [['edit', 'Изменить'], ['delete', 'Удалить']]) {
-            const control = button('', action, item.id);
-            control.classList.add('vefari_icon_button');
-            control.title = `${label}: ${item.name}`;
-            control.setAttribute('aria-label', control.title);
-            control.append(createIcon(action));
-            actions.append(control);
-        }
-        card.append(heading, actions);
-        list.append(card);
+        list.append(createCard(item, { worn: active.some(entry => entry.id === item.id) }));
     }
-    if (!list.childElementCount) {
-        const empty = document.createElement('p');
-        empty.className = 'vefari_empty vefari_hint';
-        empty.textContent = filter === 'all'
-            ? 'Коллекция пока пуста. Добавьте первую вещь — с неё начнётся ваш гардероб.'
-            : 'В этой категории пока нет вещей. Выберите другую категорию или добавьте новую вещь.';
-        list.append(empty);
-    }
+    if (!list.childElementCount) list.append(createEmpty(filter !== 'all'));
     field('prompt').textContent = prompt || 'Инжект пуст: гардероб выключен, нет активных вещей или не выбран персонаж.';
 }
 
@@ -178,6 +128,15 @@ function showEditor(focus = true) {
     field('settings_toggle').setAttribute('aria-expanded', 'false');
     field('controls').dataset.view = 'editor';
     if (focus) field('editor_title').focus({ preventScroll: true });
+}
+
+// A filtered collection is a hint about what the new item is.
+function openNewEditor() {
+    if (!mayDiscardDraft()) return;
+    resetEditor();
+    if (filter !== 'all') field('category').value = filter;
+    showEditor(false);
+    field('name').focus();
 }
 
 function mayDiscardDraft() {
@@ -460,8 +419,9 @@ async function init() {
     }
     root.querySelector('[data-emblem]').append(createEmblem('small'));
     root.querySelector('[data-runes]').append(createRunes());
+    field('filter').append(createChip('all', 'Все', { pressed: true }));
     for (const [key, label] of Object.entries(CATEGORIES)) {
-        field('filter').add(new Option(label, key));
+        field('filter').append(createChip(key, label, { pressed: false }));
         field('category').add(new Option(label, key));
     }
     field('enabled').addEventListener('change', () => runAction(() => {
@@ -482,7 +442,6 @@ async function init() {
             switchTarget(event.key === 'Home' ? 'user' : event.key === 'End' ? 'bot' : target === 'user' ? 'bot' : 'user');
         });
     }
-    field('filter').addEventListener('change', () => { filter = field('filter').value; refreshView(); });
     root.addEventListener('click', event => {
         const choice = event.target.closest('[data-filter]');
         if (!choice) return;
@@ -536,12 +495,7 @@ async function init() {
         resetEditor();
         showSettings(false);
     });
-    field('add').addEventListener('click', () => {
-        if (!mayDiscardDraft()) return;
-        resetEditor();
-        showEditor(false);
-        field('name').focus();
-    });
+    field('add').addEventListener('click', openNewEditor);
     field('close').addEventListener('click', () => { void wardrobeWindow.close().catch(error => status(error.message, true)); });
     field('form').addEventListener('input', () => { dirty = true; });
     field('form').addEventListener('change', () => { dirty = true; });
@@ -551,7 +505,10 @@ async function init() {
     });
     root.addEventListener('click', event => {
         const control = event.target.closest('button[data-action]');
-        if (control) void runAction(() => handleItemAction(control.dataset.action, control.dataset.id));
+        if (!control) return;
+        // Opening the editor moves focus, which an inert busy panel would swallow.
+        if (control.dataset.action === 'add') openNewEditor();
+        else void runAction(() => handleItemAction(control.dataset.action, control.dataset.id));
     });
     root.addEventListener('click', event => {
         const card = event.target.closest('.vefari_card[data-action]');

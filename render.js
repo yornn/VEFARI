@@ -28,6 +28,76 @@ function thumbnail(item, category, className) {
     return holder;
 }
 
+function iconButton(action, item, label, icon) {
+    const control = element('button', 'vefari_icon_button');
+    control.type = 'button';
+    control.dataset.action = action;
+    control.dataset.id = item.id;
+    control.title = `${label}: ${item.name}`;
+    control.setAttribute('aria-label', control.title);
+    control.append(createIcon(icon));
+    return control;
+}
+
+function placeholder(category) {
+    const empty = element('div', 'vefari_text_only');
+    empty.title = 'Текстовый наряд';
+    empty.append(createIcon(category));
+    return empty;
+}
+
+export function createChip(value, label, { pressed }) {
+    const chip = element('button', 'vefari_chip', label);
+    chip.type = 'button';
+    chip.dataset.filter = value;
+    chip.setAttribute('aria-pressed', String(pressed));
+    return chip;
+}
+
+export function createCard(item, { worn }) {
+    const card = element('article', 'vefari_card');
+    card.dataset.action = 'toggle';
+    card.dataset.id = item.id;
+    card.dataset.worn = String(worn);
+    card.tabIndex = 0;
+    card.setAttribute('role', 'button');
+    card.setAttribute('aria-pressed', String(worn));
+    card.setAttribute('aria-label', worn ? `${item.name} — сейчас надето. Снять` : `Надеть: ${item.name}`);
+    const media = element('div', 'vefari_card_media');
+    const url = imageUrl(item.imagePath);
+    if (url) {
+        const image = element('img');
+        image.src = url;
+        image.alt = item.name;
+        image.loading = 'lazy';
+        image.addEventListener('error', () => image.replaceWith(placeholder(item.category)), { once: true });
+        media.append(image);
+    } else {
+        media.append(placeholder(item.category));
+    }
+    if (worn) {
+        const mark = element('span', 'vefari_worn_mark');
+        mark.append(createIcon('check'));
+        media.append(mark);
+    }
+    const actions = element('div', 'vefari_card_actions');
+    actions.append(iconButton('edit', item, 'Изменить', 'edit'), iconButton('delete', item, 'Удалить', 'delete'));
+    media.append(actions);
+    const title = element('strong', 'vefari_card_title', item.name);
+    title.title = item.name;
+    card.append(media, title);
+    return card;
+}
+
+export function createEmpty(filtered) {
+    const empty = element('div', 'vefari_empty');
+    const add = element('button', 'vefari_button', 'Добавить вещь');
+    add.type = 'button';
+    add.dataset.action = 'add';
+    empty.append(createIcon('othala'), element('p', '', filtered ? 'В этой категории пусто' : 'Сундук пуст'), add);
+    return empty;
+}
+
 export function createSlot(category, item, { active }) {
     const row = element('li', 'vefari_slot_row');
     const slot = element('button', 'vefari_slot');
