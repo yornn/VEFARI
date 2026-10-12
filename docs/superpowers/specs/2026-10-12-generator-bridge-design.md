@@ -54,7 +54,7 @@
     `{ text: подпись }`, `{ inlineData: { mimeType, data } }` для каждой
     загруженной картинки;
   - подпись: `Outfit reference for <Имя> — <CATEGORY>: <название вещи>. Dress <Имя> in exactly this item; it overrides clothing visible in any face or character reference.`
-  - в начало последней текстовой части дописывается блок
+  - в начало последней текстовой части (после абзаца генератора `[CRITICAL: The reference image(s)…]`, если он есть) дописывается блок
     `[Outfits: follow exactly, they override clothing from any other reference]`
     и далее по строке на прошедшую сторону в формате инжекта VEFARI:
     `[OUTFIT: <Имя> is currently wearing: TOP: … BOTTOM: ….]`

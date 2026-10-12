@@ -113,3 +113,11 @@ test('formatReport speaks Russian plurals', () => {
     assert.equal(formatReport({ sides: [{ name: 'Петя', images: [], text: ['top', 'bottom'] }] }), 'Петя — 2 текстом');
     assert.equal(formatReport({ sides: [{ name: 'Маша', images: Array(11).fill('x'), text: [] }] }), 'Маша — 11 картинок');
 });
+
+test('outfit block follows the generator reference instruction', () => {
+    const instruction = '[CRITICAL: The reference image(s) attached show the EXACT appearance of the character(s). You MUST precisely copy their: face structure, eye color, hair color and style, skin tone, body type, clothing, and all distinctive features. Do not deviate from the reference appearances.]';
+    const outfit = plan({ snapshot: snapshot([item('jacket', 'top')]) });
+    const text = augmentGeminiBody(body(`${instruction}\n\n[Style: anime] Маша идёт`), outfit, new Map()).contents[0].parts.at(-1).text;
+    assert.equal(text, `${instruction}\n\n[Outfits: follow exactly, they override clothing from any other reference]\n`
+        + '[OUTFIT: Маша is currently wearing: TOP: jacket desc.]\n\n[Style: anime] Маша идёт');
+});

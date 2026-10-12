@@ -4,6 +4,9 @@ import { TARGETS } from './wardrobe.js';
 import { outfitBlock } from './prompt.js';
 
 const HEADER = '[Outfits: follow exactly, they override clothing from any other reference]';
+// The generator's own preamble tells the model to copy clothing from every reference;
+// the outfit block goes after it so the more specific rule is the last word.
+const GENERATOR_INSTRUCTION = /^\[CRITICAL: The reference image\(s\)[^\]]*\]\n\n/;
 
 const escapeRegExp = text => String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -80,7 +83,9 @@ export function augmentGeminiBody(body, plan, images) {
         return image ? [{ text: label(side.name, item) }, { inlineData: { mimeType: image.mimeType, data: image.base64 } }] : [];
     }));
     const blocks = plan.sides.map(side => outfitBlock(side.name, side.items)).filter(Boolean);
-    parts[index] = { ...parts[index], text: `${[HEADER, ...blocks].join('\n')}\n\n${parts[index].text}` };
+    const original = parts[index].text;
+    const lead = original.match(GENERATOR_INSTRUCTION)?.[0] || '';
+    parts[index] = { ...parts[index], text: `${lead}${[HEADER, ...blocks].join('\n')}\n\n${original.slice(lead.length)}` };
     parts.splice(index, 0, ...references);
     return result;
 }
