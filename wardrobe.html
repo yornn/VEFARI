@@ -1,20 +1,34 @@
 <section id="vefari_window" aria-label="Гардероб VEFARI" lang="ru">
     <header class="vefari_header">
-        <div class="vefari_brand"><span data-icon="tunic"></span><h2 id="vefari_title">VEFARI</h2></div>
+        <div class="vefari_brand"><span data-emblem></span><h2 id="vefari_title">VEFARI</h2><span data-runes></span></div>
         <div class="vefari_row">
             <button id="vefari_settings_toggle" class="vefari_icon_button" type="button" title="Настройки гардероба" aria-label="Настройки гардероба" aria-expanded="false" aria-controls="vefari_settings_panel"><span data-icon="settings"></span></button>
             <button id="vefari_close" class="vefari_icon_button" type="button" title="Закрыть" aria-label="Закрыть гардероб"><span data-icon="close"></span></button>
         </div>
     </header>
-    <div id="vefari_controls" role="group" aria-label="Управление гардеробом" aria-busy="false">
-        <nav class="vefari_tabs" role="tablist" aria-label="Коллекция одежды">
-            <button id="vefari_tab_user" type="button" role="tab" aria-selected="true" aria-controls="vefari_collection_panel" data-target="user"><span class="vefari_tab_label">USER</span><span id="vefari_tab_user_name" class="vefari_tab_owner">Player</span></button>
-            <button id="vefari_tab_bot" type="button" role="tab" aria-selected="false" aria-controls="vefari_collection_panel" data-target="bot" tabindex="-1"><span class="vefari_tab_label">CHAR</span><span id="vefari_tab_bot_name" class="vefari_tab_owner">Alice</span></button>
-        </nav>
+    <div id="vefari_controls" role="group" aria-label="Управление гардеробом" aria-busy="false" data-view="collection">
+        <aside id="vefari_armory" aria-label="Оружейная: кто и что надето">
+            <nav class="vefari_tabs" role="tablist" aria-label="Коллекция одежды">
+                <button id="vefari_tab_user" type="button" role="tab" aria-selected="true" aria-controls="vefari_owner_panel vefari_collection_panel" data-target="user"><span class="vefari_tab_label">User</span><span id="vefari_tab_user_name" class="vefari_tab_owner">Player</span></button>
+                <button id="vefari_tab_bot" type="button" role="tab" aria-selected="false" aria-controls="vefari_owner_panel vefari_collection_panel" data-target="bot" tabindex="-1"><span class="vefari_tab_label">Char</span><span id="vefari_tab_bot_name" class="vefari_tab_owner">Alice</span></button>
+            </nav>
+            <div id="vefari_owner_panel" role="tabpanel" aria-labelledby="vefari_tab_user">
+                <div id="vefari_disabled_notice" class="vefari_notice" hidden>
+                    <p>Гардероб выключен: одежда не уходит модели.</p>
+                    <button id="vefari_enable" class="vefari_button" type="button">Включить</button>
+                </div>
+                <p id="vefari_context" class="vefari_hint" hidden>Откройте одиночный чат, чтобы надевать вещи. Коллекцию можно редактировать и без чата.</p>
+                <fieldset id="vefari_mode" class="vefari_cells">
+                    <legend class="vefari_visually_hidden">Режим</legend>
+                    <label class="vefari_cell"><input id="vefari_mode_full" type="radio" name="vefari_mode" value="full" checked><span>Целиком</span></label>
+                    <label class="vefari_cell"><input id="vefari_mode_parts" type="radio" name="vefari_mode" value="parts"><span>По частям</span></label>
+                </fieldset>
+                <ul id="vefari_slots" aria-label="Надето"></ul>
+                <button id="vefari_clear" class="vefari_button vefari_button_quiet" type="button">Снять всё</button>
+            </div>
+        </aside>
         <div class="vefari_scroll">
-            <p id="vefari_context" class="vefari_hint"></p>
-            <p id="vefari_disabled_notice" class="vefari_hint" hidden>Гардероб выключен. Выбор сохраняется, но одежда не отправляется модели. Включить можно в настройках.</p>
-            <section id="vefari_collection_panel" role="tabpanel" aria-labelledby="vefari_tab_user" tabindex="0">
+            <section id="vefari_collection_panel" role="tabpanel" aria-labelledby="vefari_tab_user" tabindex="-1">
                 <div class="vefari_collection_toolbar">
                     <select id="vefari_filter" aria-label="Фильтр по категории"><option value="all">Все вещи</option></select>
                     <div class="vefari_toolbar_actions">
@@ -26,13 +40,9 @@
                 <div id="vefari_items" class="vefari_grid"></div>
             </section>
             <section id="vefari_settings_panel" aria-labelledby="vefari_settings_title" hidden>
-                <div class="vefari_section_heading"><h3 id="vefari_settings_title" tabindex="-1">Настройки</h3><button id="vefari_back" class="vefari_button" type="button"><span data-icon="back"></span>К нарядам</button></div>
+                <div class="vefari_section_heading"><h3 id="vefari_settings_title" tabindex="-1">Настройки</h3><button id="vefari_back" class="vefari_button vefari_button_quiet" type="button"><span data-icon="back"></span>К нарядам</button></div>
                 <section class="vefari_settings_card" aria-label="Настройки гардероба">
                     <label class="vefari_checkbox"><input id="vefari_enabled" type="checkbox"><span>Включить гардероб и текстовый инжект</span></label>
-                    <label class="vefari_field">Режим выбранного владельца
-                        <select id="vefari_mode"><option value="full">Полный наряд</option><option value="parts">По частям</option></select>
-                    </label>
-                    <p class="vefari_hint">Полный наряд можно дополнить аксессуарами и причёской. Верх, низ или обувь включают режим по частям.</p>
                     <div class="vefari_settings_group" role="group" aria-label="Генератор картинок">
                         <label class="vefari_checkbox"><input id="vefari_generator_images" type="checkbox"><span>Картинки нарядов в генератор</span></label>
                         <label class="vefari_field">Максимум картинок нарядов <input id="vefari_image_limit" type="number" min="1" max="10" step="1" inputmode="numeric"></label>
@@ -47,7 +57,7 @@
                 </section>
             </section>
             <section id="vefari_editor_panel" aria-labelledby="vefari_editor_title" hidden>
-                <div class="vefari_section_heading"><h3 id="vefari_editor_title" tabindex="-1">Добавить вещь</h3><button id="vefari_editor_back" class="vefari_button" type="button"><span data-icon="back"></span>К нарядам</button></div>
+                <div class="vefari_section_heading"><h3 id="vefari_editor_title" tabindex="-1">Добавить вещь</h3><button id="vefari_editor_back" class="vefari_button vefari_button_quiet" type="button"><span data-icon="back"></span>К нарядам</button></div>
                 <section class="vefari_editor" aria-label="Редактор вещи">
                     <form id="vefari_form">
                         <label class="vefari_field">Название <input id="vefari_name" type="text" maxlength="200" placeholder="Например, Северный плащ" required></label>
@@ -77,9 +87,5 @@
             </section>
         </div>
     </div>
-    <section id="vefari_equipped_bar" aria-labelledby="vefari_equipped_title">
-        <div class="vefari_section_heading"><h3 id="vefari_equipped_title">Сейчас надето</h3><button id="vefari_clear" class="vefari_button vefari_button_quiet" type="button">Снять всё</button></div>
-        <div id="vefari_current" class="vefari_current"></div>
-    </section>
     <p id="vefari_status" role="status" aria-live="polite"></p>
 </section>

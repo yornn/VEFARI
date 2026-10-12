@@ -149,7 +149,7 @@ try {
     const shadow = "document.getElementById('vefari_host').shadowRoot";
     await evaluate(`${shadow}.getElementById('vefari_tab_user').focus()`);
     await key('Tab', 'Tab', 9);
-    if (!await evaluate(`${shadow}.activeElement?.id === 'vefari_collection_panel'`)) throw new Error('Native Tab did not enter the collection panel.');
+    if (!await evaluate(`${shadow}.activeElement?.id === 'vefari_mode_full'`)) throw new Error('Native Tab did not enter the armory.');
     await key('Tab', 'Tab', 9, 8);
     if (!await evaluate(`${shadow}.activeElement?.id === 'vefari_tab_user'`)) throw new Error('Native Shift+Tab did not return to the selected tab.');
     await key('Escape', 'Escape', 27);

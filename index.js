@@ -3,13 +3,14 @@
  * UI for the VEFARI command-based wardrobe controller.
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-import { CATEGORIES, VERSION, validateItem } from './wardrobe.js';
+import { CATEGORIES, VERSION, categoriesForMode, validateItem } from './wardrobe.js';
 import { createController } from './integration.js';
 import { createId } from './ids.js';
 import { retainedImages } from './storage.js';
 import { deleteUnusedImage, imageUrl, loadReference, MAX_IMAGE_BYTES, prepareImage, uploadImage } from './images.js';
 import { createZip, embedOutfitText, extractOutfitText, safeFilename } from './transfer.js';
-import { createIcon } from './icons.js';
+import { createEmblem, createIcon, createRunes } from './icons.js';
+import { createSlot } from './render.js';
 import { mountWardrobeWindow } from './window.js';
 import { formatReport } from './bridge.js';
 
@@ -19,6 +20,8 @@ let root;
 let editingId = null;
 let pendingImport = null;
 let target = 'user';
+let filter = 'all';
+let statusTimer = 0;
 let busy = false;
 let dirty = false;
 let settingsOpen = false;
@@ -27,10 +30,15 @@ let wardrobeWindow;
 let participantNames = { user: '{{user}}', bot: 'Персонаж' };
 const field = id => root.querySelector(`#vefari_${id}`);
 
+// Notes fade on their own; errors stay until the next action.
+const STATUS_TIMEOUT_MS = 6000;
+
 function status(message = '', error = false) {
+    clearTimeout(statusTimer);
     if (root) {
         field('status').textContent = message;
         field('status').dataset.error = String(error);
+        if (message && !error) statusTimer = setTimeout(() => status(), STATUS_TIMEOUT_MS);
     }
     if (error) console.error('[VEFARI]', message);
 }
@@ -72,39 +80,32 @@ function render() {
             user: context.name1 || participantNames.user,
             bot: context.name2 || participantNames.bot,
         };
-    field('tab_user_name').textContent = participantNames.user;
-    field('tab_bot_name').textContent = participantNames.bot;
+    for (const owner of ['user', 'bot']) {
+        field(`tab_${owner}_name`).textContent = participantNames[owner];
+        field(`tab_${owner}_name`).title = participantNames[owner];
+    }
     field('enabled').checked = settings.enabled;
     field('generator_images').checked = settings.generatorImages;
     field('image_limit').value = String(settings.maxImageRefs);
     field('bridge_report').textContent = formatReport(report);
-    field('context').textContent = character
-        ? ''
-        : 'Откройте одиночный чат, чтобы надеть вещи. Коллекцию можно редактировать и без чата. Группы пока не поддерживаются.';
-    field('mode').value = selection.mode;
+    field('context').hidden = Boolean(character);
+    field(`mode_${selection.mode}`).checked = true;
     field('mode').disabled = !character;
-    field('clear').disabled = !character;
+    field('slots').hidden = !character;
+    field('clear').hidden = !character;
     field('disabled_notice').hidden = settings.enabled;
     for (const tab of root.querySelectorAll('[role="tab"]')) {
         const selected = tab.dataset.target === target;
         tab.setAttribute('aria-selected', String(selected));
         tab.tabIndex = selected ? 0 : -1;
     }
-    field('collection_panel').setAttribute('aria-labelledby', `vefari_tab_${target}`);
-    field('current').replaceChildren();
-    for (const item of active) {
-        const row = document.createElement('div');
-        row.className = 'vefari_row';
-        const label = document.createElement('span');
-        label.textContent = `${CATEGORIES[item.category]}: ${item.name}`;
-        row.append(label, button('Снять', 'unequip', item.category));
-        field('current').append(row);
-    }
-    if (!active.length) field('current').textContent = 'Ничего не выбрано.';
+    for (const panel of ['owner_panel', 'collection_panel']) field(panel).setAttribute('aria-labelledby', `vefari_tab_${target}`);
+    field('slots').replaceChildren(...categoriesForMode(selection.mode).map(category =>
+        createSlot(category, active.find(item => item.category === category) ?? null, { active: filter === category })));
 
     const list = field('items');
     list.replaceChildren();
-    const filter = field('filter').value;
+    field('filter').value = filter;
     for (const item of collection) {
         if (filter !== 'all' && item.category !== filter) continue;
         const card = document.createElement('article');
@@ -164,6 +165,7 @@ function showSettings(show, focus = true) {
     field('editor_panel').hidden = true;
     field('collection_panel').hidden = show;
     field('settings_toggle').setAttribute('aria-expanded', String(show));
+    field('controls').dataset.view = show ? 'settings' : 'collection';
     if (focus) field(show ? 'settings_title' : `tab_${target}`).focus({ preventScroll: true });
 }
 
@@ -174,6 +176,7 @@ function showEditor(focus = true) {
     field('editor_panel').hidden = false;
     field('collection_panel').hidden = true;
     field('settings_toggle').setAttribute('aria-expanded', 'false');
+    field('controls').dataset.view = 'editor';
     if (focus) field('editor_title').focus({ preventScroll: true });
 }
 
@@ -455,6 +458,8 @@ async function init() {
     for (const placeholder of root.querySelectorAll('[data-icon]')) {
         placeholder.append(createIcon(placeholder.dataset.icon));
     }
+    root.querySelector('[data-emblem]').append(createEmblem('small'));
+    root.querySelector('[data-runes]').append(createRunes());
     for (const [key, label] of Object.entries(CATEGORIES)) {
         field('filter').add(new Option(label, key));
         field('category').add(new Option(label, key));
@@ -477,7 +482,13 @@ async function init() {
             switchTarget(event.key === 'Home' ? 'user' : event.key === 'End' ? 'bot' : target === 'user' ? 'bot' : 'user');
         });
     }
-    field('filter').addEventListener('change', refreshView);
+    field('filter').addEventListener('change', () => { filter = field('filter').value; refreshView(); });
+    root.addEventListener('click', event => {
+        const choice = event.target.closest('[data-filter]');
+        if (!choice) return;
+        filter = choice.dataset.filter;
+        refreshView();
+    });
     field('image').addEventListener('change', () => {
         const file = field('image').files[0];
         if (!file || field('name').value.trim()) return;
@@ -494,8 +505,11 @@ async function init() {
     });
     field('export_item').addEventListener('click', () => { void runAction(exportItem); });
     field('export_all').addEventListener('click', () => { void runAction(exportAll); });
-    field('mode').addEventListener('change', () => runAction(() => {
-        ownerCommand('set-mode', { mode: field('mode').value });
+    field('mode').addEventListener('change', event => runAction(() => {
+        ownerCommand('set-mode', { mode: event.target.value });
+    }));
+    field('enable').addEventListener('click', () => runAction(() => {
+        controller.dispatch({ type: 'set-enabled', enabled: true });
     }));
     field('clear').addEventListener('click', () => runAction(() => {
         ownerCommand('clear-owner');

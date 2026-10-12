@@ -2,164 +2,231 @@
 /* Loaded only inside the wardrobe's shadow root. No Tavern theme variables. */
 #vefari_window {
     all: initial;
-    --vefari-bg: #111519;
-    --vefari-surface: #191e23;
-    --vefari-line: #363b3d;
-    --vefari-accent: #c5a572;
-    --vefari-text: #ece5d8;
-    --vefari-muted: #a5a7a4;
-    --vefari-body: 'Golos Text', 'Segoe UI', sans-serif;
-    --vefari-heading: 'Cormorant Garamond', Georgia, serif;
+    --vefari-night: #0f1214;
+    --vefari-deep: #0c0f11;
+    --vefari-slate: #171c1f;
+    --vefari-raised: #1e2428;
+    --vefari-iron: #2c343a;
+    --vefari-iron-strong: #3d474e;
+    --vefari-ash: #8d989f;
+    --vefari-ash-dim: #5f6b72;
+    --vefari-snow: #e4e9ec;
+    --vefari-steel: #c3ced5;
+    --vefari-frost: #9fc3d6;
+    --vefari-frost-deep: #6f8796;
+    --vefari-blood: #9e3b38;
+    --vefari-blood-text: #f1c0bb;
+    --vefari-display: 'Forum', Georgia, serif;
+    --vefari-caps: 'Alegreya Sans SC', 'Segoe UI', sans-serif;
+    --vefari-body: 'Alegreya Sans', 'Segoe UI', sans-serif;
+    --vefari-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
     box-sizing: border-box;
+    position: relative;
     display: flex;
     flex-direction: column;
-    height: min(740px, calc(100vh - 48px));
-    height: min(740px, calc(100dvh - 48px));
+    height: min(760px, calc(100vh - 48px));
+    height: min(760px, calc(100dvh - 48px));
     min-width: 0;
-    color: var(--vefari-text);
-    background: radial-gradient(ellipse at 0 0, #c5a5720c, transparent 55%), var(--vefari-bg);
-    font: 400 13px/1.55 var(--vefari-body);
+    color: var(--vefari-snow);
+    background:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 .07 0 0 0 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+        linear-gradient(180deg, #9fc3d609, transparent 240px);
+    background-color: var(--vefari-night);
+    font: 400 14px/1.5 var(--vefari-body);
     color-scheme: dark;
     text-align: left;
     direction: ltr;
     isolation: isolate;
     -webkit-text-size-adjust: 100%;
 }
+/* Inner hairline and four corner brackets, drawn over the edges without catching clicks. */
+#vefari_window::before, #vefari_window::after { content: ''; position: absolute; pointer-events: none; z-index: 3; }
+#vefari_window::before { inset: 3px; border: 1px solid #2c343a99; }
+#vefari_window::after {
+    inset: 5px;
+    --bracket: linear-gradient(var(--vefari-frost-deep), var(--vefari-frost-deep));
+    background:
+        var(--bracket) left top / 12px 1px no-repeat, var(--bracket) left top / 1px 12px no-repeat,
+        var(--bracket) right top / 12px 1px no-repeat, var(--bracket) right top / 1px 12px no-repeat,
+        var(--bracket) left bottom / 12px 1px no-repeat, var(--bracket) left bottom / 1px 12px no-repeat,
+        var(--bracket) right bottom / 12px 1px no-repeat, var(--bracket) right bottom / 1px 12px no-repeat;
+}
 *, *::before, *::after { box-sizing: border-box; }
 [hidden] { display: none !important; }
-h2, h3, p { margin: 0; }
-h3 { font: 600 25px/1.1 var(--vefari-heading); color: var(--vefari-text); }
-button, input, select, textarea { font: inherit; color: inherit; }
+h2, h3, h4, p { margin: 0; }
+h3 { font: 400 22px/1.15 var(--vefari-display); color: var(--vefari-snow); }
+button, input, select, textarea { font: inherit; color: inherit; border-radius: 0; }
 button { cursor: pointer; }
-button:disabled, input:disabled, select:disabled { cursor: not-allowed; opacity: 0.48; }
-:focus-visible { outline: 2px solid var(--vefari-accent); outline-offset: 3px; }
-::selection { color: #111519; background: #c5a572; }
-* { scrollbar-width: thin; scrollbar-color: #65543c #111519; }
-.vefari_icon { display: block; width: 20px; height: 22px; flex: 0 0 auto; }
+button:disabled, input:disabled, select:disabled { cursor: not-allowed; opacity: 0.45; }
+:focus-visible { outline: 1px solid var(--vefari-frost); outline-offset: 2px; }
+[tabindex="-1"]:focus { outline: none; }
+::selection { color: var(--vefari-night); background: var(--vefari-frost); }
+* { scrollbar-width: thin; scrollbar-color: var(--vefari-iron-strong) transparent; }
+.vefari_visually_hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.vefari_icon { display: block; width: 18px; height: 18px; flex: 0 0 auto; }
 [data-icon] { display: inline-flex; }
-.vefari_header { display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; gap: 12px; padding: 16px 24px; border-bottom: 1px solid #c5a57240; background: linear-gradient(115deg, #202427, #14191d); }
-.vefari_brand { display: flex; align-items: center; gap: 13px; min-width: 0; }
-.vefari_brand > span { display: grid; place-items: center; width: 46px; height: 50px; color: var(--vefari-accent); border: 1px solid #c5a57259; border-radius: 12px 12px 20px 20px; background: #0d1115; box-shadow: inset 0 0 0 4px #1c2023; }
-.vefari_brand .vefari_icon { width: 29px; height: 32px; }
-.vefari_brand h2 { font: 600 25px/1.2 'Cinzel', Georgia, serif; letter-spacing: 0.2em; color: #dbc39c; }
-.vefari_eyebrow { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--vefari-muted); }
-.vefari_brand p { margin-top: 4px; }
+.vefari_hint { color: var(--vefari-ash); font-size: 12px; line-height: 1.5; }
 .vefari_row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
+
+/* Buttons: iron by default, polished steel with a double frame for the one primary action. */
 .vefari_button, .vefari_icon_button {
     display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-    flex: 0 0 auto; width: fit-content; max-width: 100%; min-height: 36px; margin: 0;
-    padding: 7px 12px; border: 1px solid #494a43; border-radius: 5px;
-    background: #20252a; color: #ddd7cc; font-size: 12px; font-weight: 500; line-height: 1.35;
-    transition: border-color 140ms, background-color 140ms, color 140ms;
+    flex: 0 0 auto; width: fit-content; max-width: 100%; min-height: 34px; margin: 0;
+    padding: 6px 14px; border: 1px solid var(--vefari-iron-strong);
+    background: var(--vefari-raised); color: #d6dde1; font: 500 13px/1.3 var(--vefari-body);
+    transition: border-color 140ms var(--vefari-ease), background-color 140ms var(--vefari-ease), color 140ms var(--vefari-ease);
 }
-.vefari_button:hover:not(:disabled), .vefari_icon_button:hover:not(:disabled) { color: #f4e5c9; border-color: #a08860; background: #2b2e2d; }
-.vefari_button_primary { color: #171714; background: #c5a572; border-color: #c5a572; }
-.vefari_button_primary:hover:not(:disabled) { color: #111519; background: #dcc08f; border-color: #dcc08f; }
-.vefari_button_quiet { background: transparent; border-color: transparent; color: var(--vefari-muted); }
-.vefari_icon_button { width: 36px; height: 36px; padding: 7px; }
-.vefari_icon_button[aria-expanded="true"] { border-color: var(--vefari-accent); color: var(--vefari-accent); background: #c5a57214; }
-[data-action="delete"]:hover:not(:disabled) { color: #f0b1a8; border-color: #915b56; background: #382626; }
-#vefari_controls { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; }
-.vefari_tabs { display: flex; flex-shrink: 0; gap: 8px; padding: 10px 24px 0; border-bottom: 1px solid var(--vefari-line); }
-[role="tab"] { flex: 0 1 auto; min-width: 124px; max-width: 220px; overflow: hidden; padding: 6px 16px 9px; border: 0; border-bottom: 2px solid transparent; background: transparent; text-align: left; color: var(--vefari-muted); }
-.vefari_tab_label { display: block; font: 600 16px/1.2 'Cinzel', Georgia, serif; letter-spacing: 0.08em; }
-.vefari_tab_owner { display: block; margin-top: 2px; overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-[role="tab"]:hover { color: var(--vefari-text); background: #c5a57209; }
-[role="tab"][aria-selected="true"] { border-bottom-color: var(--vefari-accent); color: #dbc39c; background: linear-gradient(0deg, #c5a57212, transparent); }
-.vefari_scroll { flex: 1; min-height: 0; min-width: 0; padding: 18px 24px 24px; overflow-y: auto; overscroll-behavior: contain; }
-.vefari_hint { color: var(--vefari-muted); font-size: 11px; line-height: 1.6; }
-#vefari_context { margin-bottom: 16px; overflow-wrap: anywhere; }
-#vefari_context:empty { display: none; }
-#vefari_disabled_notice { padding: 10px 12px; margin-bottom: 16px; border-left: 2px solid var(--vefari-accent); background: #c5a5720c; color: #dbc39c; }
-.vefari_section_heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
-#vefari_equipped_bar { flex-shrink: 0; padding: 10px 24px 12px; border-top: 1px solid #c5a57240; background: linear-gradient(180deg, #161b1f, #101418); }
-#vefari_equipped_bar h3 { font-size: 20px; }
-#vefari_equipped_bar .vefari_section_heading { margin-bottom: 8px; }
-#vefari_equipped_bar .vefari_current { margin-bottom: 0; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }
-.vefari_current { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 9px; font-size: 12px; color: #bbb7ae; }
-.vefari_current .vefari_row { max-width: 100%; flex-shrink: 0; padding: 4px 5px 4px 10px; border: 1px solid #65543c; border-radius: 5px; background: #101519; }
-.vefari_current .vefari_row > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.vefari_current .vefari_button { padding: 4px 8px; min-height: 28px; font-size: 10px; background: transparent; border-color: #363b3d; }
-.vefari_collection_toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin: 16px 0 14px; }
+.vefari_button:hover:not(:disabled), .vefari_icon_button:hover:not(:disabled) { color: var(--vefari-snow); border-color: var(--vefari-steel); background: #252c31; }
+.vefari_icon_button { width: 34px; height: 34px; padding: 7px; color: #aab6bd; background: transparent; }
+.vefari_icon_button[aria-expanded="true"] { border-color: var(--vefari-frost); color: var(--vefari-frost); background: #9fc3d612; }
+.vefari_button_primary, .vefari_icon_button.vefari_button_primary {
+    color: var(--vefari-night); background: var(--vefari-steel); border-color: var(--vefari-steel);
+    box-shadow: inset 0 0 0 1px var(--vefari-steel), inset 0 0 0 2px var(--vefari-night), inset 0 0 0 3px #8c979e;
+}
+.vefari_button_primary:hover:not(:disabled), .vefari_icon_button.vefari_button_primary:hover:not(:disabled) { color: var(--vefari-night); background: #d6dfe4; border-color: #d6dfe4; }
+.vefari_button_quiet { background: transparent; border-color: transparent; color: var(--vefari-ash); }
+.vefari_button_quiet:hover:not(:disabled) { background: transparent; border-color: var(--vefari-iron); }
+
+/* Fields */
+input[type="text"], input[type="number"], select, textarea {
+    display: block; width: 100%; min-width: 0; padding: 8px 10px; margin: 0;
+    border: 1px solid var(--vefari-iron-strong); background: var(--vefari-deep); color: var(--vefari-snow);
+    font: 400 14px/1.4 var(--vefari-body);
+    transition: border-color 140ms var(--vefari-ease);
+}
+select {
+    appearance: none; padding-right: 32px; cursor: pointer;
+    background: var(--vefari-deep) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238d989f' stroke-width='1.6' stroke-linecap='square'%3E%3Cpath d='M6.5 9.5 12 15l5.5-5.5'/%3E%3C/svg%3E") right 9px center / 16px no-repeat;
+}
+input::placeholder, textarea::placeholder { color: var(--vefari-ash-dim); opacity: 1; }
+input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus { outline: none; border-color: var(--vefari-frost); }
+textarea { min-height: 112px; max-height: 300px; resize: vertical; }
+input[type="checkbox"] { appearance: auto; flex: 0 0 auto; width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--vefari-frost); }
+.vefari_field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; min-width: 0; color: #a9b4ba; font-size: 12px; }
+.vefari_checkbox { display: flex; align-items: flex-start; gap: 9px; margin-bottom: 14px; font-size: 13px; color: #d6dde1; }
+
+/* Cells: a strict row of radio choices (mode, collection, send mode). */
+.vefari_cells { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); min-width: 0; margin: 0; padding: 0; border: 1px solid var(--vefari-iron-strong); }
+.vefari_cell { position: relative; display: block; min-width: 0; }
+.vefari_cell input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.vefari_cell span { display: block; padding: 6px 8px; overflow: hidden; color: var(--vefari-ash); font: 500 13px/1.3 var(--vefari-body); text-align: center; text-overflow: ellipsis; white-space: nowrap; transition: background-color 140ms var(--vefari-ease), color 140ms var(--vefari-ease); }
+.vefari_cell + .vefari_cell span { border-left: 1px solid var(--vefari-iron-strong); }
+.vefari_cell input:hover + span { color: var(--vefari-snow); }
+.vefari_cell input:checked + span { background: var(--vefari-steel); color: var(--vefari-night); }
+.vefari_cell input:focus-visible + span { outline: 1px solid var(--vefari-frost); outline-offset: -4px; }
+.vefari_cells:disabled { opacity: 0.45; }
+.vefari_cells:disabled input { cursor: not-allowed; }
+
+/* Header */
+.vefari_header { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; gap: 12px; min-height: 60px; padding: 10px 20px; border-bottom: 1px solid var(--vefari-iron); }
+.vefari_brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.vefari_brand [data-emblem] { color: var(--vefari-steel); }
+.vefari_emblem { display: block; width: 34px; height: 34px; flex: 0 0 auto; }
+.vefari_brand h2 { font: 400 22px/1 var(--vefari-display); letter-spacing: 0.24em; color: var(--vefari-snow); }
+.vefari_brand [data-runes] { color: var(--vefari-frost-deep); }
+.vefari_runes { display: block; width: 63px; height: 14px; }
+.vefari_header .vefari_row { flex-wrap: nowrap; gap: 6px; }
+
+/* Body: armory on the left, the active screen on the right. */
+#vefari_controls { display: grid; grid-template-columns: 232px minmax(0, 1fr); flex: 1; min-width: 0; min-height: 0; }
+#vefari_armory { display: flex; flex-direction: column; gap: 12px; min-width: 0; min-height: 0; padding: 16px 14px; overflow-y: auto; background: var(--vefari-deep); border-right: 1px solid var(--vefari-iron); }
+.vefari_tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+[role="tab"] { min-width: 0; margin: 0; padding: 7px 10px 8px; overflow: hidden; border: 1px solid var(--vefari-iron); background: transparent; color: var(--vefari-ash); text-align: left; transition: border-color 140ms var(--vefari-ease), color 140ms var(--vefari-ease), background-color 140ms var(--vefari-ease); }
+.vefari_tab_label { display: block; font: 500 15px/1.2 var(--vefari-caps); letter-spacing: 0.08em; }
+.vefari_tab_owner { display: block; margin-top: 2px; overflow: hidden; font-size: 13px; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
+[role="tab"]:hover { color: var(--vefari-snow); border-color: var(--vefari-iron-strong); }
+[role="tab"][aria-selected="true"] { border-color: var(--vefari-frost); background: #9fc3d612; color: #dcebf3; box-shadow: inset 0 -2px 0 var(--vefari-frost); }
+[role="tab"][aria-selected="true"] .vefari_tab_owner { color: #b7c7d0; }
+#vefari_owner_panel { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.vefari_notice { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 10px 12px; border: 1px solid #9fc3d640; border-left: 2px solid var(--vefari-frost); background: #9fc3d60d; color: #cfe0ea; font-size: 13px; line-height: 1.4; }
+.vefari_notice .vefari_button { min-height: 30px; padding: 4px 12px; }
+#vefari_slots { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.vefari_slot_row { position: relative; display: flex; min-width: 0; }
+.vefari_slot {
+    display: grid; grid-template-columns: 28px minmax(0, 1fr); align-items: center; gap: 10px;
+    flex: 1; min-width: 0; min-height: 46px; margin: 0; padding: 6px 38px 6px 6px;
+    border: 1px solid #232a2f; background: #13171a; color: var(--vefari-snow); text-align: left;
+    transition: border-color 140ms var(--vefari-ease), background-color 140ms var(--vefari-ease);
+}
+.vefari_slot:hover { border-color: var(--vefari-iron-strong); }
+.vefari_slot[data-filled="true"] { border-color: #9fc3d659; }
+.vefari_slot[aria-pressed="true"] { border-color: var(--vefari-frost-deep); background: #9fc3d60c; }
+.vefari_slot_thumb { display: grid; place-items: center; width: 28px; height: 34px; overflow: hidden; background: #1a2024; color: var(--vefari-ash-dim); }
+.vefari_slot[data-filled="true"] .vefari_slot_thumb { color: var(--vefari-frost); }
+.vefari_slot_thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.vefari_slot_text { min-width: 0; }
+.vefari_slot_label { display: block; overflow: hidden; color: var(--vefari-ash); font: 500 11px/1.2 var(--vefari-caps); letter-spacing: 0.08em; text-overflow: ellipsis; white-space: nowrap; }
+.vefari_slot_name { display: block; overflow: hidden; font: 400 14px/1.3 var(--vefari-display); text-overflow: ellipsis; white-space: nowrap; }
+.vefari_slot_empty { color: var(--vefari-ash); font: 400 13px/1.3 var(--vefari-body); }
+.vefari_slot_row .vefari_icon_button { position: absolute; top: 50%; right: 6px; width: 26px; height: 26px; padding: 5px; border-color: transparent; transform: translateY(-50%); }
+.vefari_slot_row .vefari_icon_button:hover:not(:disabled) { border-color: var(--vefari-iron-strong); background: var(--vefari-night); }
+#vefari_clear { align-self: flex-end; }
+
+.vefari_scroll { min-width: 0; min-height: 0; padding: 18px 20px 20px; overflow-y: auto; overscroll-behavior: contain; }
+.vefari_section_heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+
+/* Collection (base until the card and chip pass) */
+.vefari_collection_toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
 .vefari_toolbar_actions { display: flex; align-items: center; gap: 8px; }
-#vefari_filter { width: 184px; max-width: 100%; min-height: 36px; }
-input[type="text"], input[type="number"], select, textarea { display: block; width: 100%; min-width: 0; padding: 9px 11px; margin: 0; border: 1px solid #424747; border-radius: 5px; background: #101519; color: var(--vefari-text); box-shadow: inset 0 1px 3px #0003; }
-select { padding-right: 24px; }
-input::placeholder, textarea::placeholder { color: #828681; opacity: 1; }
-input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus { border-color: var(--vefari-accent); }
-textarea { min-height: 116px; max-height: 300px; resize: vertical; }
-.vefari_grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(218px, 1fr)); align-items: start; gap: 14px; }
-.vefari_card { display: flex; flex-direction: column; gap: 10px; min-width: 0; max-width: 280px; height: 100%; padding: 12px; border: 1px solid var(--vefari-line); border-radius: 7px; background: linear-gradient(145deg, #22282b, #171c21); box-shadow: 0 4px 12px #0002; cursor: pointer; transition: border-color 140ms, box-shadow 140ms; }
-.vefari_card:hover { border-color: #a08860; }
-.vefari_card[data-worn="true"] { border-color: #c5a572; background: linear-gradient(145deg, #292c27, #1a201e); box-shadow: inset 0 0 0 1px #c5a572, 0 0 0 1px #c5a57245, 0 0 22px #c5a57224; }
-.vefari_card > img, .vefari_text_only { align-self: center; width: 100%; aspect-ratio: 4 / 5; border-radius: 5px; background: #101519; border: 1px solid #ffffff07; }
-.vefari_card > img { object-fit: cover; }
-.vefari_text_only { display: grid; place-items: center; position: relative; color: #a88e65; background: radial-gradient(ellipse, #c5a57212, transparent 70%), #12171b; }
-.vefari_text_only::before { content: ''; position: absolute; width: 44%; height: 44%; border: 1px solid #c5a57230; border-radius: 22px 22px 32px 32px; }
-.vefari_text_only .vefari_icon { width: 38px; height: 44px; }
-.vefari_card_title { font: 600 23px/1.1 var(--vefari-heading); color: #eee2cb; overflow-wrap: anywhere; }
-.vefari_card p { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; line-height: 1.65; color: #b8b9b4; }
-.vefari_card_actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 5px; }
-.vefari_empty { grid-column: 1 / -1; justify-self: center; width: min(100%, 420px); margin: 16px 0; padding: 24px; border: 1px dashed #65543c; border-radius: 7px; background: #191e23; text-align: center; }
-#vefari_settings_panel > .vefari_section_heading, #vefari_editor_panel > .vefari_section_heading { margin-bottom: 16px; }
-.vefari_settings_card, .vefari_editor { min-width: 0; padding: 16px; border: 1px solid var(--vefari-line); border-radius: 7px; background: #191e23; }
-.vefari_settings_card { max-width: 560px; }
-.vefari_editor { max-width: 760px; }
-.vefari_settings_card > .vefari_hint { margin-top: 14px; }
-.vefari_settings_group { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--vefari-line); }
-.vefari_settings_group > .vefari_hint { margin-top: 14px; }
-.vefari_field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; min-width: 0; color: #c1c1b8; font-size: 11px; }
-.vefari_checkbox { display: flex; align-items: flex-start; gap: 9px; margin-bottom: 16px; font-size: 12px; color: #d5d2c8; }
-input[type="checkbox"] { appearance: auto; flex: 0 0 auto; width: 16px; height: 16px; margin: 2px 0 0; accent-color: #c5a572; }
+#vefari_filter { width: 184px; max-width: 100%; }
+.vefari_grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); align-items: start; gap: 12px; }
+.vefari_card { display: flex; flex-direction: column; gap: 8px; min-width: 0; max-width: 220px; padding: 5px; border: 1px solid var(--vefari-iron); background: var(--vefari-slate); cursor: pointer; }
+.vefari_card[data-worn="true"] { border-color: var(--vefari-frost); }
+.vefari_card > img, .vefari_text_only { width: 100%; aspect-ratio: 4 / 5; background: #12171a; }
+.vefari_card > img { display: block; object-fit: cover; }
+.vefari_text_only { display: grid; place-items: center; color: var(--vefari-ash-dim); }
+.vefari_card_title { font: 400 15px/1.15 var(--vefari-display); overflow-wrap: anywhere; }
+.vefari_card_actions { display: flex; gap: 6px; }
+.vefari_empty { grid-column: 1 / -1; padding: 24px; border: 1px dashed var(--vefari-iron-strong); text-align: center; }
+
+/* Editor and settings (base until their own passes) */
+.vefari_settings_card, .vefari_editor { min-width: 0; max-width: 760px; padding: 16px; border: 1px solid var(--vefari-iron); background: var(--vefari-slate); }
+.vefari_settings_group { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--vefari-iron); }
+.vefari_settings_group > .vefari_hint, .vefari_settings_card > .vefari_hint, .vefari_editor > .vefari_hint { margin-top: 12px; }
 .vefari_form_row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.vefari_upload { padding: 12px; border: 1px dashed #545044; border-radius: 5px; background: #13181c; }
-input[type="file"] { display: block; width: 100%; min-width: 0; margin-top: 4px; font-size: 11px; color: var(--vefari-muted); }
-input[type="file"]::file-selector-button { padding: 7px 9px; margin-right: 8px; border: 1px solid #65543c; border-radius: 4px; background: #282923; color: #dec59b; font: inherit; cursor: pointer; }
+.vefari_upload { padding: 12px; border: 1px dashed var(--vefari-iron-strong); background: var(--vefari-deep); }
+input[type="file"] { display: block; width: 100%; min-width: 0; margin-top: 4px; font-size: 12px; color: var(--vefari-ash); }
+input[type="file"]::file-selector-button { padding: 6px 10px; margin-right: 8px; border: 1px solid var(--vefari-iron-strong); border-radius: 0; background: var(--vefari-raised); color: var(--vefari-snow); font: inherit; cursor: pointer; }
 .vefari_send_mode { min-width: 0; margin: 0 0 14px; padding: 0; border: 0; }
-.vefari_send_mode legend { margin-bottom: 6px; padding: 0; color: #c1c1b8; font-size: 11px; }
-.vefari_segmented { display: flex; width: fit-content; max-width: 100%; border: 1px solid #424747; border-radius: 5px; overflow: hidden; }
+.vefari_send_mode legend { margin-bottom: 6px; padding: 0; color: #a9b4ba; font-size: 12px; }
+.vefari_segmented { display: flex; width: fit-content; max-width: 100%; border: 1px solid var(--vefari-iron-strong); }
 .vefari_segment { position: relative; flex: 0 0 auto; }
 .vefari_segment input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
-.vefari_segment span { display: block; padding: 9px 14px; background: #101519; color: var(--vefari-muted); font-size: 12px; white-space: nowrap; transition: background-color 140ms, color 140ms; }
-.vefari_segment + .vefari_segment span { border-left: 1px solid #424747; }
-.vefari_segment input:checked + span { background: #c5a572; color: #171714; font-weight: 600; }
-.vefari_segment input:focus-visible + span { outline: 2px solid var(--vefari-accent); outline-offset: -2px; }
+.vefari_segment span { display: block; padding: 7px 14px; color: var(--vefari-ash); font-size: 13px; white-space: nowrap; }
+.vefari_segment + .vefari_segment span { border-left: 1px solid var(--vefari-iron-strong); }
+.vefari_segment input:checked + span { background: var(--vefari-steel); color: var(--vefari-night); font-weight: 500; }
+.vefari_segment input:focus-visible + span { outline: 1px solid var(--vefari-frost); outline-offset: -4px; }
 #vefari_editor_image:empty { display: none; }
-#vefari_editor_image img { display: block; width: 120px; height: 150px; margin-bottom: 12px; object-fit: contain; background: #101519; border-radius: 4px; }
-.vefari_editor > .vefari_hint { margin-top: 14px; }
-details { margin-top: 16px; border-top: 1px solid var(--vefari-line); }
-summary { padding: 12px 0 0; color: #c5a572; font-size: 11px; cursor: pointer; }
-#vefari_prompt { padding: 12px; margin: 12px 0 0; border: 1px solid var(--vefari-line); border-radius: 4px; background: #101519; color: #b8b9b4; white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.7 ui-monospace, Consolas, monospace; max-height: 220px; overflow-y: auto; }
-#vefari_status { flex-shrink: 0; padding: 10px 24px; border-top: 1px solid var(--vefari-line); background: #191e23; font-size: 12px; overflow-wrap: anywhere; max-height: 96px; overflow-y: auto; }
+#vefari_editor_image img { display: block; width: 120px; height: 150px; margin-bottom: 12px; object-fit: contain; background: var(--vefari-deep); }
+details { margin-top: 16px; border-top: 1px solid var(--vefari-iron); }
+summary { padding: 12px 0 0; color: var(--vefari-frost); font-size: 12px; cursor: pointer; }
+#vefari_prompt { padding: 12px; margin: 12px 0 0; border: 1px solid var(--vefari-iron); background: var(--vefari-deep); color: #b9c3c9; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.6 ui-monospace, Consolas, monospace; max-height: 220px; overflow-y: auto; }
+
+/* Messages */
+#vefari_status { position: relative; z-index: 1; flex-shrink: 0; max-height: 96px; padding: 9px 20px 9px 18px; overflow-y: auto; border-top: 1px solid var(--vefari-iron); border-left: 2px solid var(--vefari-frost); background: var(--vefari-slate); color: #cfe0ea; font-size: 13px; overflow-wrap: anywhere; }
 #vefari_status:empty { display: none; }
-#vefari_status[data-error="true"] { color: #f0b1a8; }
-@media (max-width: 700px) {
-    .vefari_settings_card .vefari_field { max-width: 260px; }
+#vefari_status[data-error="true"] { border-left-color: var(--vefari-blood); color: var(--vefari-blood-text); }
+
+@media (max-width: 720px) {
+    #vefari_controls { grid-template-columns: minmax(0, 1fr); grid-auto-rows: max-content; overflow-y: auto; overscroll-behavior: contain; }
+    #vefari_armory { padding: 12px 14px; overflow: visible; border-right: 0; border-bottom: 1px solid var(--vefari-iron); }
+    .vefari_scroll { padding: 14px; overflow: visible; }
+    #vefari_slots { flex-direction: row; overflow-x: auto; scrollbar-width: none; }
+    .vefari_slot_row { flex: 0 0 156px; }
+    input[type="text"], input[type="number"], select, textarea { font-size: 16px; }
 }
 @media (max-width: 540px) {
-    #vefari_window { height: calc(100vh - 32px); height: calc(100dvh - 32px); }
-    .vefari_header { padding: 15px; }
+    #vefari_window { height: calc(100vh - 18px); height: calc(100dvh - 18px); }
+    .vefari_header { min-height: 54px; padding: 8px 14px; }
     .vefari_brand { gap: 10px; }
-    .vefari_brand h2 { font-size: 21px; }
-    .vefari_brand > span { width: 36px; height: 43px; }
-    .vefari_header .vefari_row { gap: 6px; flex-wrap: nowrap; }
-    .vefari_tabs { padding: 8px 15px 0; }
-    .vefari_scroll { padding: 15px; }
-    .vefari_grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-    .vefari_card { padding: 10px; }
-    .vefari_card_title { font-size: 21px; }
-    .vefari_card_actions .vefari_icon_button { width: 40px; height: 40px; }
-    .vefari_button, .vefari_icon_button { min-height: 40px; }
-    #vefari_equipped_bar { padding: 9px 15px 10px; }
-    #vefari_filter { width: 168px; }
-    .vefari_settings_card, .vefari_editor { padding: 14px; }
-    input[type="text"], input[type="number"], select, textarea { font-size: 16px; }
-    #vefari_status { padding: 9px 15px; }
+    .vefari_brand h2 { font-size: 19px; }
+    .vefari_emblem { width: 30px; height: 30px; }
+    .vefari_button, .vefari_icon_button { min-height: 38px; }
+    .vefari_header .vefari_icon_button { width: 38px; height: 38px; }
+    .vefari_form_row { grid-template-columns: minmax(0, 1fr); }
 }
-@media (max-width: 360px) {
-    .vefari_brand > span { display: none; }
-    .vefari_grid, .vefari_form_row { grid-template-columns: minmax(0, 1fr); }
-    .vefari_card { max-width: 100%; }
+@media (max-width: 380px) {
+    .vefari_brand [data-runes] { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { transition: none !important; animation: none !important; }

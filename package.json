@@ -7,6 +7,6 @@
     "scripts": {
         "test": "node --test",
         "test:browser": "node scripts/browser-smoke.mjs",
-        "check": "node --check index.js && node --check wardrobe.js && node --check images.js && node --check integration.js && node --check storage.js && node --check prompt.js && node --check ids.js && node --check icons.js && node --check window.js && node --check transfer.js && node --check bridge.js && node --check generator.js && node --check interceptor.js"
+        "check": "node --check index.js && node --check wardrobe.js && node --check images.js && node --check integration.js && node --check storage.js && node --check prompt.js && node --check ids.js && node --check icons.js && node --check render.js && node --check window.js && node --check transfer.js && node --check bridge.js && node --check generator.js && node --check interceptor.js"
     }
 }
