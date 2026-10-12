@@ -209,6 +209,7 @@ test('bridge adds outfit images to generator requests and records a report', asy
     assert.ok(parts.at(-1).text.endsWith('FULL: coat description.]\n\nAlice in the rain'));
     assert.deepEqual(h.controller.view().report, { sides: [{ name: 'Alice', images: ['full'], text: [] }] });
     assert.equal(renders, 1);
+    assert.deepEqual(h.errors, []);
 });
 
 test('disabled wardrobe leaves request untouched', async () => {
@@ -262,4 +263,12 @@ test('dispose removes the interceptor', async () => {
     const body = geminiBody();
     await generate(h, body);
     assert.equal(h.scope.sent.at(-1)[1].body, body);
+});
+
+test('chat traffic is sent synchronously, without waiting for the bridge', () => {
+    const h = bridgeHost();
+    const chat = { method: 'POST', body: '{"messages":[]}' };
+    void h.scope.fetch('/api/backends/chat-completions/generate', chat);
+    assert.equal(h.scope.sent.length, 1);
+    assert.equal(h.scope.sent[0][1], chat);
 });

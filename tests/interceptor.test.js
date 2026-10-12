@@ -13,11 +13,12 @@ function fakeScope() {
 }
 
 const settle = () => new Promise(resolve => setImmediate(resolve));
+const every = transform => ({ accepts: () => true, transform });
 
 test('foreign requests pass through untouched', async () => {
     const { scope, calls } = fakeScope();
     const seen = [];
-    installInterceptor(scope, async request => { seen.push(request); return null; });
+    installInterceptor(scope, every(async request => { seen.push(request); return null; }));
     const init = { method: 'POST', body: '{"a":1}', headers: { x: '1' } };
     assert.equal(await scope.fetch('/api/chat', init), 'ok');
     assert.equal(calls[0][0], '/api/chat');
@@ -34,7 +35,7 @@ test('foreign requests pass through untouched', async () => {
 test('matching request is sent with the new body', async () => {
     const { scope, calls } = fakeScope();
     const seen = [];
-    installInterceptor(scope, async request => { seen.push(request); return 'NEW'; });
+    installInterceptor(scope, every(async request => { seen.push(request); return 'NEW'; }));
     const input = new URL('https://img.example/x');
     const init = { method: 'POST', body: 'OLD', headers: { a: 'b' }, signal: 'signal' };
     await scope.fetch(input, init);
@@ -47,7 +48,7 @@ test('matching request is sent with the new body', async () => {
 test('transform failure sends the original request', async () => {
     const { scope, calls } = fakeScope();
     const errors = [];
-    installInterceptor(scope, async () => { throw new Error('boom'); }, error => errors.push(error));
+    installInterceptor(scope, every(async () => { throw new Error('boom'); }), error => errors.push(error));
     const init = { method: 'POST', body: 'OLD' };
     await scope.fetch('/generate', init);
     assert.equal(calls[0][1], init);
@@ -57,7 +58,7 @@ test('transform failure sends the original request', async () => {
 
 test('xhr send waits for transform', async () => {
     const { scope } = fakeScope();
-    installInterceptor(scope, async ({ method, url, body }) => (method === 'POST' && url === 'https://img.example/x' && body === 'OLD' ? 'NEW' : null));
+    installInterceptor(scope, every(async ({ method, url, body }) => (method === 'POST' && url === 'https://img.example/x' && body === 'OLD' ? 'NEW' : null)));
     const xhr = new scope.XMLHttpRequest();
     xhr.open('POST', 'https://img.example/x');
     xhr.send('OLD');
@@ -73,7 +74,7 @@ test('xhr send waits for transform', async () => {
 test('xhr transform failure sends the original body', async () => {
     const { scope } = fakeScope();
     const errors = [];
-    installInterceptor(scope, async () => { throw new Error('boom'); }, error => errors.push(error));
+    installInterceptor(scope, every(async () => { throw new Error('boom'); }), error => errors.push(error));
     const xhr = new scope.XMLHttpRequest();
     xhr.open('POST', '/generate');
     xhr.send('OLD');
@@ -85,13 +86,13 @@ test('xhr transform failure sends the original body', async () => {
 test('uninstall restores originals and disables wrappers', async () => {
     const first = fakeScope();
     let transforms = 0;
-    installInterceptor(first.scope, async () => { transforms++; return 'NEW'; })();
+    installInterceptor(first.scope, every(async () => { transforms++; return 'NEW'; }))();
     assert.equal(first.scope.fetch, first.fetch);
     assert.equal(first.FakeXhr.prototype.send, first.send);
     assert.equal(first.FakeXhr.prototype.open, first.open);
 
     const second = fakeScope();
-    const uninstall = installInterceptor(second.scope, async () => { transforms++; return 'NEW'; });
+    const uninstall = installInterceptor(second.scope, every(async () => { transforms++; return 'NEW'; }));
     const ours = second.scope.fetch;
     const theirs = (...args) => ours(...args);
     second.scope.fetch = theirs;
@@ -100,4 +101,42 @@ test('uninstall restores originals and disables wrappers', async () => {
     await second.scope.fetch('/generate', { method: 'POST', body: 'OLD' });
     assert.equal(second.calls[0][1].body, 'OLD');
     assert.equal(transforms, 0);
+});
+
+test('sync xhr is never deferred', () => {
+    const { scope } = fakeScope();
+    let transforms = 0;
+    installInterceptor(scope, every(async () => { transforms++; return 'NEW'; }));
+    const xhr = new scope.XMLHttpRequest();
+    xhr.open('POST', '/api/tokenizers/count', false);
+    xhr.send('OLD');
+    assert.equal(xhr.sent, 'OLD');
+    assert.equal(transforms, 0);
+});
+
+test('requests the filter rejects are sent synchronously', () => {
+    const { scope, calls } = fakeScope();
+    let transforms = 0;
+    const seen = [];
+    installInterceptor(scope, { accepts: request => { seen.push(request); return false; }, transform: async () => { transforms++; return 'NEW'; } });
+    const init = { method: 'post', body: 'OLD' };
+    void scope.fetch('/api/chat', init);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0][1], init);
+    const xhr = new scope.XMLHttpRequest();
+    xhr.open('POST', '/api/chat');
+    xhr.send('OLD');
+    assert.equal(xhr.sent, 'OLD');
+    assert.equal(transforms, 0);
+    assert.deepEqual(seen, [{ method: 'POST', url: '/api/chat' }, { method: 'POST', url: '/api/chat', sync: false }]);
+});
+
+test('a throwing filter sends the request untouched and reports once per request', () => {
+    const { scope, calls } = fakeScope();
+    const errors = [];
+    installInterceptor(scope, { accepts: () => { throw new Error('bad settings'); }, transform: async () => 'NEW' }, error => errors.push(error));
+    const init = { method: 'POST', body: 'OLD' };
+    void scope.fetch('/generate', init);
+    assert.equal(calls[0][1], init);
+    assert.equal(errors[0].message, 'bad settings');
 });

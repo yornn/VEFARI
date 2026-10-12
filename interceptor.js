@@ -2,17 +2,27 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 /**
- * transform({ method, url, body }) resolves to a replacement body or null.
- * Only string bodies are offered; everything else goes out untouched and without delay.
- * A failing transform sends the original request: a wardrobe error never blocks generation.
+ * accepts({ method, url }) decides synchronously whether a request may be held back;
+ * transform({ method, url, body }) then resolves to a replacement body or null.
+ * Rejected requests, non-string bodies and synchronous XHR go out untouched and without delay.
+ * A failing hook sends the original request: a wardrobe error never blocks generation.
  */
-export function installInterceptor(scope, transform, onError = console.error) {
+export function installInterceptor(scope, { accepts, transform }, onError = console.error) {
     let active = true;
     const originalFetch = scope.fetch;
     const proto = scope.XMLHttpRequest?.prototype;
     const originalOpen = proto?.open;
     const originalSend = proto?.send;
     const requests = new WeakMap();
+
+    function wanted(request) {
+        if (!active) return false;
+        try { return accepts(request) === true; }
+        catch (error) {
+            onError(error);
+            return false;
+        }
+    }
 
     async function rewrite(request) {
         try { return await transform(request); }
@@ -23,22 +33,26 @@ export function installInterceptor(scope, transform, onError = console.error) {
     }
 
     function wrappedFetch(input, init) {
-        const candidate = active && (typeof input === 'string' || input instanceof URL) && typeof init?.body === 'string';
-        if (!candidate) return originalFetch.call(scope, input, init);
-        return rewrite({ method: String(init.method || 'GET').toUpperCase(), url: String(input), body: init.body })
+        if (!(typeof input === 'string' || input instanceof URL) || typeof init?.body !== 'string') {
+            return originalFetch.call(scope, input, init);
+        }
+        const request = { method: String(init.method || 'GET').toUpperCase(), url: String(input) };
+        if (!wanted(request)) return originalFetch.call(scope, input, init);
+        return rewrite({ ...request, body: init.body })
             .then(body => originalFetch.call(scope, input, body === null ? init : { ...init, body }));
     }
 
     // iOS builds of the generator use XMLHttpRequest instead of fetch.
-    function wrappedOpen(method, url, ...rest) {
-        requests.set(this, { method: String(method).toUpperCase(), url: String(url) });
-        return originalOpen.call(this, method, url, ...rest);
+    // An explicit falsy third argument makes the request synchronous; those must never be deferred.
+    function wrappedOpen(method, url) {
+        requests.set(this, { method: String(method).toUpperCase(), url: String(url), sync: arguments.length > 2 && !arguments[2] });
+        return originalOpen.apply(this, arguments);
     }
 
     function wrappedSend(body) {
         const request = requests.get(this);
-        if (!active || !request || typeof body !== 'string') return originalSend.call(this, body);
-        void rewrite({ ...request, body }).then(next => {
+        if (!request || request.sync || typeof body !== 'string' || !wanted(request)) return originalSend.apply(this, arguments);
+        void rewrite({ method: request.method, url: request.url, body }).then(next => {
             try { originalSend.call(this, next ?? body); }
             catch (error) { onError(error); }
         });

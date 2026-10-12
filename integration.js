@@ -5,7 +5,7 @@ import { readSettings, writeSettings } from './storage.js';
 import { PROMPT_KEY, composePrompt, resolveParticipants, wardrobeSnapshot } from './prompt.js';
 import { loadReference } from './images.js';
 import { readGenerator as readGeneratorSettings } from './generator.js';
-import { augmentGeminiBody, parseGeneratorRequest, planOutfits } from './bridge.js';
+import { augmentGeminiBody, isGeneratorTarget, parseGeneratorRequest, planOutfits } from './bridge.js';
 import { installInterceptor } from './interceptor.js';
 
 const IN_CHAT = 1;
@@ -60,16 +60,22 @@ export function createController(getContext, {
         notify();
     }
 
-    /** Called by the interceptor at the moment the generator sends an image request. */
-    async function transformRequest(request) {
-        let generator;
+    function currentGenerator() {
         try {
-            generator = readGenerator(getContext());
+            return readGenerator(getContext());
         } catch (error) {
             if (!generatorWarned) reportError(error);
             generatorWarned = true;
             return null;
         }
+    }
+
+    // Runs for every outgoing request, so it stays synchronous and cheap.
+    const acceptsRequest = request => isGeneratorTarget(request, currentGenerator());
+
+    /** Called by the interceptor at the moment the generator sends an image request. */
+    async function transformRequest(request) {
+        const generator = currentGenerator();
         const parsed = parseGeneratorRequest(request, generator);
         if (!parsed) return null;
         const { state, snapshot } = view();
@@ -120,7 +126,7 @@ export function createController(getContext, {
             eventSource.on(event, callback);
             bindings.push(() => eventSource.removeListener(event, callback));
         }
-        uninstall = installInterceptor(scope, transformRequest, reportError);
+        uninstall = installInterceptor(scope, { accepts: acceptsRequest, transform: transformRequest }, reportError);
         connected = true;
         refresh();
     }

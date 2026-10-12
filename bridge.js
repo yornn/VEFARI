@@ -25,11 +25,15 @@ function lastTextIndex(parts) {
     return parts.findLastIndex(part => typeof part?.text === 'string');
 }
 
-/** Cheap URL checks first: unrelated traffic is never parsed. */
+/** Synchronous pre-filter: only the generator's own POSTs may be held back or parsed. */
+export function isGeneratorTarget({ method, url }, generator) {
+    return generator?.apiType === 'gemini' && Boolean(generator.endpoint)
+        && String(method || '').toUpperCase() === 'POST'
+        && typeof url === 'string' && url.startsWith(`${generator.endpoint}/`);
+}
+
 export function parseGeneratorRequest({ method, url, body }, generator) {
-    if (generator?.apiType !== 'gemini' || !generator.endpoint) return null;
-    if (String(method || '').toUpperCase() !== 'POST') return null;
-    if (typeof url !== 'string' || !url.startsWith(`${generator.endpoint}/`) || typeof body !== 'string') return null;
+    if (!isGeneratorTarget({ method, url }, generator) || typeof body !== 'string') return null;
     let parsed;
     try { parsed = JSON.parse(body); }
     catch { return null; }
