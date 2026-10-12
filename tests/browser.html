@@ -210,6 +210,26 @@
             await click('equip', coat.id);
             check(prompt() === '[OUTFIT: Alice is currently wearing: FULL: A green wool coat.]\n[OUTFIT: Player is currently wearing: FULL: A green wool coat.]', 'Shared item produces separate bracketed blocks for both participants');
             field('settings_toggle').click();
+            check(field('generator_images').checked && field('image_limit').value === '4' && field('bridge_report').textContent === 'ещё не было', 'Generator bridge settings show defaults and an empty report');
+            field('generator_images').checked = false;
+            field('generator_images').dispatchEvent(new Event('change'));
+            await idle();
+            check(context.extensionSettings.vefari.generatorImages === false, 'Generator image switch is saved');
+            field('generator_images').checked = true;
+            field('generator_images').dispatchEvent(new Event('change'));
+            await idle();
+            change('image_limit', '11');
+            await idle();
+            check(field('status').dataset.error === 'true' && field('image_limit').value === '4' && context.extensionSettings.vefari.maxImageRefs === 4, 'Out-of-range image limit is rejected and the field restored');
+            change('image_limit', '2');
+            await idle();
+            check(context.extensionSettings.vefari.maxImageRefs === 2, 'Image limit is saved');
+            context.extensionSettings.inline_image_gen = { apiType: 'gemini', endpoint: `${location.origin}/fake-generator`, geminiSendRefs: true, charRef: { name: '' }, userRef: { name: '' } };
+            await fetch(`${location.origin}/fake-generator/v1beta/models/m:generateContent`, {
+                method: 'POST', body: JSON.stringify({ contents: [{ parts: [{ text: 'Alice in the rain' }] }], generationConfig: { responseModalities: ['IMAGE'] } }),
+            });
+            check(field('bridge_report').textContent === 'Alice — 1 текстом', 'A real generator request through window.fetch updates the bridge report');
+            delete context.extensionSettings.inline_image_gen;
             field('enabled').checked = false;
             field('enabled').dispatchEvent(new Event('change'));
             await idle();

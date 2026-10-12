@@ -33,6 +33,12 @@
                         <select id="vefari_mode"><option value="full">Полный наряд</option><option value="parts">По частям</option></select>
                     </label>
                     <p class="vefari_hint">Полный наряд можно дополнить аксессуарами и причёской. Верх, низ или обувь включают режим по частям.</p>
+                    <div class="vefari_settings_group" role="group" aria-label="Генератор картинок">
+                        <label class="vefari_checkbox"><input id="vefari_generator_images" type="checkbox"><span>Картинки нарядов в генератор</span></label>
+                        <label class="vefari_field">Максимум картинок нарядов <input id="vefari_image_limit" type="number" min="1" max="10" step="1" inputmode="numeric"></label>
+                        <p class="vefari_hint">Для notsosillynotsoimages (Gemini-compatible): в момент генерации картинки наряды тех, кого генератор отправляет лицом, добавляются референсами. Выключено или сверх лимита — вещи уходят только описанием.</p>
+                        <p class="vefari_hint">Последняя отправка в генератор: <span id="vefari_bridge_report"></span></p>
+                    </div>
                     <details><summary>Текст текущего инжекта</summary><pre id="vefari_prompt"></pre></details>
                     <div class="vefari_row">
                         <button id="vefari_export_all" class="vefari_button" type="button"><span data-icon="export"></span>Экспорт всех нарядов</button>
@@ -66,7 +72,7 @@
                             <button id="vefari_cancel" class="vefari_button vefari_button_quiet" type="button">Отмена</button>
                         </div>
                     </form>
-                    <p class="vefari_hint">Описание всегда попадает в чат. Режим «Картинка и текст» дополнительно отдаёт референс через API гардероба; «Только текст» скрывает картинку от адаптеров, не удаляя её. Экспорт скачивает PNG со вшитым описанием — так наряд можно передать.</p>
+                    <p class="vefari_hint">Описание всегда попадает в чат. «Картинка и текст» дополнительно отправляет картинку вещи в генератор картинок; «Только текст» — только описание, картинка остаётся сохранённой. Экспорт скачивает PNG со вшитым описанием — так наряд можно передать.</p>
                 </section>
             </section>
         </div>

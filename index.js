@@ -11,6 +11,7 @@ import { deleteUnusedImage, imageUrl, loadReference, MAX_IMAGE_BYTES, prepareIma
 import { createZip, embedOutfitText, extractOutfitText, safeFilename } from './transfer.js';
 import { createIcon } from './icons.js';
 import { mountWardrobeWindow } from './window.js';
+import { formatReport } from './bridge.js';
 
 const getContext = () => SillyTavern.getContext();
 const controller = createController(getContext, { reportError: error => status(error.message, true) });
@@ -62,7 +63,7 @@ function appendImage(parent, item) {
 }
 
 function render() {
-    const { state: settings, participants: character, selection, collection, prompt } = controller.view(target);
+    const { state: settings, participants: character, selection, collection, prompt, report } = controller.view(target);
     const active = selection.items;
     const context = getContext();
     participantNames = character
@@ -74,6 +75,9 @@ function render() {
     field('tab_user_name').textContent = participantNames.user;
     field('tab_bot_name').textContent = participantNames.bot;
     field('enabled').checked = settings.enabled;
+    field('generator_images').checked = settings.generatorImages;
+    field('image_limit').value = String(settings.maxImageRefs);
+    field('bridge_report').textContent = formatReport(report);
     field('context').textContent = character
         ? ''
         : 'Откройте одиночный чат, чтобы надеть вещи. Коллекцию можно редактировать и без чата. Группы пока не поддерживаются.';
@@ -458,6 +462,13 @@ async function init() {
     field('enabled').addEventListener('change', () => runAction(() => {
         controller.dispatch({ type: 'set-enabled', enabled: field('enabled').checked });
     }));
+    field('generator_images').addEventListener('change', () => runAction(() => {
+        controller.dispatch({ type: 'set-generator-images', enabled: field('generator_images').checked });
+    }));
+    // A rejected limit leaves the saved value; re-render so the field shows it again.
+    field('image_limit').addEventListener('change', () => runAction(() => {
+        controller.dispatch({ type: 'set-image-limit', limit: Number(field('image_limit').value) });
+    }).finally(refreshView));
     for (const tab of root.querySelectorAll('[role="tab"]')) {
         tab.addEventListener('click', () => switchTarget(tab.dataset.target));
         tab.addEventListener('keydown', event => {
