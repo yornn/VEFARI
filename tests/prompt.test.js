@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { composePrompt, resolveParticipants, wardrobeSnapshot } from '../prompt.js';
+import { composePrompt, outfitBlock, resolveParticipants, wardrobeSnapshot } from '../prompt.js';
 import { createState, reduceWardrobe } from '../wardrobe.js';
 import { garment, inventory, owner, wear } from './fixtures.js';
 
@@ -96,4 +96,9 @@ test('switching cards cannot include previous owners clothing', () => {
     const ctx = context();
     ctx.characters[0].avatar = 'bob.png';
     assert.equal(composePrompt(wardrobeSnapshot(state, resolveParticipants(ctx))), '');
+});
+test('outfitBlock formats one participant exactly like the chat injection', () => {
+    const items = [{ ...garment('jacket', 'top'), description: 'Black [leather] jacket' }, { ...garment('jeans', 'bottom'), description: 'Blue jeans.' }];
+    assert.equal(outfitBlock('Маша', items), '[OUTFIT: Маша is currently wearing: TOP: Black (leather) jacket. BOTTOM: Blue jeans.]');
+    assert.equal(outfitBlock('Маша', []), '');
 });

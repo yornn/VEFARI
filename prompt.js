@@ -23,21 +23,23 @@ export function wardrobeSnapshot(state, participants) {
     return result;
 }
 
+/** One participant's block; shared by the chat injection and the image generator bridge. */
+export function outfitBlock(name, items) {
+    const garments = items.flatMap(({ category, description }) => {
+        const text = blockText(description);
+        if (!text) return [];
+        const ending = /[.!?…;:]$/u.test(text) ? '' : '.';
+        return [`${category.toUpperCase()}: ${text}${ending}`];
+    });
+    return garments.length ? `[OUTFIT: ${blockText(name)} is currently wearing: ${garments.join(' ')}]` : '';
+}
+
 export function composePrompt(snapshot) {
     if (!snapshot?.enabled) return '';
-    const blocks = [];
-    for (const target of TARGETS) {
-        const garments = snapshot[target].items.flatMap(({ category, description }) => {
-            const text = blockText(description);
-            if (!text) return [];
-            const ending = /[.!?…;:]$/u.test(text) ? '' : '.';
-            return [`${category.toUpperCase()}: ${text}${ending}`];
-        });
-        if (!garments.length) continue;
-        const name = blockText(target === 'bot' ? snapshot.characterName : snapshot.userName);
-        blocks.push(`[OUTFIT: ${name} is currently wearing: ${garments.join(' ')}]`);
-    }
-    return blocks.join('\n');
+    return TARGETS
+        .map(target => outfitBlock(target === 'bot' ? snapshot.characterName : snapshot.userName, snapshot[target].items))
+        .filter(Boolean)
+        .join('\n');
 }
 
 // Preserve one pair of boundary brackets and one line per participant.
