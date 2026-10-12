@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createState, reduceWardrobe, selectWardrobe, selectCollection } from '../wardrobe.js';
+import { categoriesForMode, createState, reduceWardrobe, selectWardrobe, selectCollection } from '../wardrobe.js';
 import { createId } from '../ids.js';
 import { freezeDeep, garment, inventory, owner, wear } from './fixtures.js';
 
@@ -164,4 +164,14 @@ test('generator settings commands validate and never mutate', () => {
         assert.throws(() => reduceWardrobe(state, { type: 'set-image-limit', limit }), /от 1 до 10/);
     }
     assert.throws(() => reduceWardrobe(state, { type: 'set-generator-images', enabled: 'yes' }));
+});
+
+test('mode categories match what the injection can show', () => {
+    assert.deepEqual(categoriesForMode('full'), ['full', 'accessories', 'hair']);
+    assert.deepEqual(categoriesForMode('parts'), ['top', 'bottom', 'shoes', 'accessories', 'hair']);
+    assert.throws(() => categoriesForMode('cloak'), /Неизвестный режим/);
+    let state = inventory(garment('dress', 'full'), garment('shirt', 'top'), garment('ring', 'accessories'));
+    state = wear(wear(wear(state, 'dress'), 'ring'), 'shirt');
+    const { mode, items } = selection(state);
+    assert.ok(items.every(item => categoriesForMode(mode).includes(item.category)));
 });

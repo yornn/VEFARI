@@ -154,6 +154,16 @@ function changeSelection(state, command) {
     return replaceAssignment(state, next);
 }
 
+// Full outfits hide separates and vice versa; slots and the injection share this rule.
+function visibleInMode(category, mode) {
+    return mode === 'parts' ? category !== 'full' : !SEPARATES.has(category);
+}
+
+export function categoriesForMode(mode) {
+    validateMode(mode);
+    return Object.keys(CATEGORIES).filter(category => visibleInMode(category, mode));
+}
+
 /** Category order is presentation, not the storage layout. */
 export function selectWardrobe(state, characterKey, target) {
     if (!TARGETS.includes(target)) throw new Error('Неизвестный владелец наряда.');
@@ -161,7 +171,7 @@ export function selectWardrobe(state, characterKey, target) {
     const mode = assignment?.mode || 'full';
     const selected = new Set(assignment?.itemIds || []);
     const items = state.items.filter(item => selected.has(item.id) && item.audiences.includes(target)
-        && (mode === 'parts' ? item.category !== 'full' : !SEPARATES.has(item.category)));
+        && visibleInMode(item.category, mode));
     const order = Object.keys(CATEGORIES);
     items.sort((left, right) => order.indexOf(left.category) - order.indexOf(right.category));
     return { mode, items: items.map(item => ({ ...item, audiences: [...item.audiences] })) };
