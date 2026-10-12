@@ -1,6 +1,6 @@
 // SillyTavern owns the modal stack, Escape handling and focus trap.
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { createIcon } from './icons.js';
+import { createEmblem } from './icons.js';
 
 export function mountWardrobeWindow({ root, styleText, getContext, beforeOpen, canClose, afterClose, onError }) {
     let popup = null;
@@ -51,7 +51,7 @@ export function mountWardrobeWindow({ root, styleText, getContext, beforeOpen, c
         trigger.setAttribute('aria-haspopup', 'dialog');
         const label = document.createElement('span');
         label.textContent = 'VEFARI';
-        trigger.append(createIcon('tunic'), label);
+        trigger.append(createEmblem('small'), label);
         trigger.addEventListener('click', () => { void open().catch(onError); });
         entry.append(trigger);
         menu.append(entry);

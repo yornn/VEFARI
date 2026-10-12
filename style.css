@@ -3,7 +3,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Cormorant+Garamond:wght@600;700&family=Golos+Text:wght@400;500;600&display=swap');
 
 #vefari_menu { display: flex; align-items: center; gap: 0.65em; width: 100%; color: inherit; font: inherit; text-align: left; background: none; border: 0; cursor: pointer; }
-#vefari_menu .vefari_icon { width: 24px; height: 26px; flex: 0 0 auto; vertical-align: middle; }
+#vefari_menu .vefari_emblem { width: 24px; height: 24px; flex: 0 0 auto; vertical-align: middle; }
 #vefari_menu:focus-visible { outline: 2px solid #c5a572; outline-offset: 2px; }
 
 /* Only the native Popup shell is in light DOM. Internal controls use wardrobe.css. */

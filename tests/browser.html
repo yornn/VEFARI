@@ -125,7 +125,7 @@
             await import('/index.js');
             await wait(() => window.vefari && field('menu'));
             check(!document.getElementById('extensions_settings2').childElementCount && !document.getElementById('extensions_settings').childElementCount, 'Nothing is mounted in the top extension settings');
-            check(field('menu').querySelector('svg path') && field('menu').textContent === 'VEFARI', 'Wand menu contains VEFARI and its original tunic SVG');
+            check(field('menu').querySelector('svg.vefari_emblem path') && field('menu').textContent === 'VEFARI', 'Wand menu contains VEFARI and the fibula emblem');
             check(!field('window') && !prompt(), 'Window stays detached until the wand item is clicked');
             emit('ready');
             emit('ready');
