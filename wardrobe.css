@@ -173,10 +173,22 @@ textarea { min-height: 112px; max-height: 300px; resize: vertical; }
 }
 .vefari_chip:hover { color: var(--vefari-snow); border-color: var(--vefari-iron-strong); }
 .vefari_chip[aria-pressed="true"] { border-color: var(--vefari-frost); background: #9fc3d60f; color: var(--vefari-snow); box-shadow: inset 0 -2px 0 var(--vefari-frost); }
-.vefari_toolbar_actions { display: flex; flex-shrink: 0; align-items: center; gap: 8px; }
-.vefari_grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(136px, 1fr)); align-items: start; gap: 12px; }
+.vefari_grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: 14px; }
+/* Empty outfits at the head of the grid: add a new item, import a PNG. */
+.vefari_tile {
+    display: flex; flex-direction: column; gap: 6px; min-width: 0; margin: 0; padding: 5px;
+    border: 1px dashed var(--vefari-iron-strong); background: transparent; color: var(--vefari-ash); text-align: left;
+    transition: border-color 160ms var(--vefari-ease), color 160ms var(--vefari-ease), background-color 160ms var(--vefari-ease);
+}
+.vefari_tile_media { display: grid; place-items: center; aspect-ratio: 4 / 5; background: radial-gradient(ellipse at 50% 45%, #9fc3d60a, transparent 70%); }
+.vefari_tile .vefari_icon { width: 40px; height: 40px; stroke-width: 1.1; }
+.vefari_tile[data-action="add"] .vefari_tile_media { color: var(--vefari-steel); }
+.vefari_tile .vefari_card_title { color: var(--vefari-ash); }
+.vefari_tile:hover { border-color: var(--vefari-frost-deep); background: #9fc3d608; color: var(--vefari-frost); }
+.vefari_tile:hover .vefari_tile_media { color: var(--vefari-frost); }
+.vefari_tile:hover .vefari_card_title { color: var(--vefari-snow); }
 .vefari_card {
-    position: relative; display: flex; flex-direction: column; gap: 6px; min-width: 0; max-width: 220px; padding: 5px;
+    position: relative; display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 5px;
     border: 1px solid var(--vefari-iron); background: var(--vefari-slate); cursor: pointer;
     transition: border-color 160ms var(--vefari-ease), box-shadow 220ms var(--vefari-ease), background-color 220ms var(--vefari-ease);
 }
@@ -191,8 +203,6 @@ textarea { min-height: 112px; max-height: 300px; resize: vertical; }
 .vefari_text_only { display: grid; place-items: center; width: 100%; height: 100%; color: var(--vefari-ash-dim); background: radial-gradient(ellipse at 50% 45%, #9fc3d60d, transparent 70%); }
 .vefari_text_only .vefari_icon { width: 44px; height: 44px; stroke-width: 1; }
 .vefari_card[data-worn="true"] .vefari_text_only { color: var(--vefari-frost); }
-.vefari_worn_mark { position: absolute; top: 6px; left: 6px; display: grid; place-items: center; width: 18px; height: 18px; background: var(--vefari-frost); color: var(--vefari-night); }
-.vefari_worn_mark .vefari_icon { width: 14px; height: 14px; stroke-width: 2.2; }
 .vefari_card_actions { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; opacity: 0; transition: opacity 140ms var(--vefari-ease); }
 .vefari_card:hover .vefari_card_actions, .vefari_card:focus-within .vefari_card_actions { opacity: 1; }
 .vefari_card_actions .vefari_icon_button { width: 26px; height: 26px; min-height: 0; padding: 4px; border-color: var(--vefari-iron-strong); background: #0f1214e6; color: var(--vefari-steel); }
@@ -202,7 +212,7 @@ textarea { min-height: 112px; max-height: 300px; resize: vertical; }
     display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; min-height: 2.3em; overflow: hidden;
     padding: 0 2px 1px; color: var(--vefari-snow); font: 400 15px/1.15 var(--vefari-display); overflow-wrap: anywhere;
 }
-.vefari_empty { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 32px 16px; border: 1px dashed var(--vefari-iron-strong); color: var(--vefari-ash); text-align: center; }
+.vefari_empty { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 20px 16px; border: 1px dashed var(--vefari-iron); color: var(--vefari-ash); text-align: center; }
 .vefari_empty .vefari_icon { width: 30px; height: 30px; color: var(--vefari-frost-deep); stroke-width: 1.2; }
 .vefari_empty p { color: var(--vefari-snow); font: 400 19px/1.2 var(--vefari-display); }
 @media (hover: none) {
@@ -291,7 +301,7 @@ textarea { min-height: 112px; max-height: 300px; resize: vertical; }
     .vefari_slot_row { flex: 0 0 156px; }
     .vefari_chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
     .vefari_chip { flex: 0 0 auto; }
-    .vefari_grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+    .vefari_grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
     .vefari_card_actions .vefari_icon_button { width: 36px; height: 36px; padding: 8px; }
     .vefari_card_actions .vefari_icon { width: 18px; height: 18px; }
     input[type="text"], input[type="number"], select, textarea { font-size: 16px; }

@@ -10,7 +10,7 @@ import { retainedImages } from './storage.js';
 import { deleteUnusedImage, imageUrl, loadReference, MAX_IMAGE_BYTES, prepareImage, uploadImage } from './images.js';
 import { createZip, embedOutfitText, extractOutfitText, safeFilename } from './transfer.js';
 import { createEmblem, createIcon, createRunes, fibulaOutline } from './icons.js';
-import { createCard, createChip, createEmpty, createSlot } from './render.js';
+import { createCard, createChip, createEmpty, createSlot, createTile } from './render.js';
 import { mountWardrobeWindow } from './window.js';
 import { formatReport } from './bridge.js';
 
@@ -93,13 +93,15 @@ function render() {
         createSlot(category, active.find(item => item.category === category) ?? null, { active: filter === category })));
 
     const list = field('items');
-    list.replaceChildren();
+    // The first two places in every collection are empty outfits: add a new one, or import a PNG.
+    list.replaceChildren(
+        createTile('add', 'plus', 'Новая вещь', 'Добавить вещь'),
+        createTile('import', 'import', 'Импорт PNG', 'Импорт наряда из PNG со вшитым описанием'),
+    );
     for (const chip of field('filter').children) chip.setAttribute('aria-pressed', String(chip.dataset.filter === filter));
-    for (const item of collection) {
-        if (filter !== 'all' && item.category !== filter) continue;
-        list.append(createCard(item, { worn: active.some(entry => entry.id === item.id) }));
-    }
-    if (!list.childElementCount) list.append(createEmpty(filter !== 'all'));
+    const shown = collection.filter(item => filter === 'all' || item.category === filter);
+    for (const item of shown) list.append(createCard(item, { worn: active.some(entry => entry.id === item.id) }));
+    if (!shown.length) list.append(createEmpty(filter !== 'all'));
     field('prompt').textContent = prompt || 'Инжект пуст: гардероб выключен, нет активных вещей или не выбран персонаж.';
 }
 
@@ -511,10 +513,6 @@ async function init() {
     field('remove_image').addEventListener('change', () => {
         field('dropzone').dataset.removing = String(field('remove_image').checked);
     });
-    field('import').addEventListener('click', () => {
-        if (!mayDiscardDraft()) return;
-        field('import_file').click();
-    });
     field('import_file').addEventListener('change', () => {
         const file = field('import_file').files[0];
         field('import_file').value = '';
@@ -553,7 +551,6 @@ async function init() {
         resetEditor();
         showSettings(false);
     });
-    field('add').addEventListener('click', openNewEditor);
     field('close').addEventListener('click', () => { void wardrobeWindow.close().catch(error => status(error.message, true)); });
     field('form').addEventListener('input', () => { dirty = true; });
     field('form').addEventListener('change', () => { dirty = true; });
@@ -564,9 +561,11 @@ async function init() {
     root.addEventListener('click', event => {
         const control = event.target.closest('button[data-action]');
         if (!control) return;
-        // Opening the editor moves focus, which an inert busy panel would swallow.
+        // Opening the editor or a file picker must not run under the busy lock, which swallows focus.
         if (control.dataset.action === 'add') openNewEditor();
-        else void runAction(() => handleItemAction(control.dataset.action, control.dataset.id));
+        else if (control.dataset.action === 'import') {
+            if (mayDiscardDraft()) field('import_file').click();
+        } else void runAction(() => handleItemAction(control.dataset.action, control.dataset.id));
     });
     root.addEventListener('click', event => {
         const card = event.target.closest('.vefari_card[data-action]');

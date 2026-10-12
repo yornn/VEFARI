@@ -171,7 +171,7 @@
             const armoryRect = field('armory').getBoundingClientRect(), collectionRect = field('collection_panel').getBoundingClientRect();
             check(innerWidth >= 720 ? armoryRect.right <= collectionRect.left + 1 : armoryRect.bottom <= collectionRect.top + 1, 'Armory sits beside the collection on desktop and above it on narrow screens');
             check(wardrobe().querySelector('.vefari_brand svg.vefari_emblem') && wardrobe().querySelector('.vefari_brand svg.vefari_runes'), 'Header shows the fibula and the rune line');
-            check(field('add').textContent.trim() === '' && field('import').type === 'button', 'Add is an icon button with an import placeholder beside it');
+            check(field('items').firstElementChild === field('add') && field('add').nextElementSibling === field('import') && field('import').type === 'button' && !field('add').classList.contains('vefari_card'), 'Add and import tiles open the collection');
             check(field('filter').querySelectorAll('.vefari_chip[data-filter]').length === 7, 'Category filter is a row of chips');
             field('settings_toggle').click();
             check(!field('settings_panel').hidden && field('collection_panel').hidden && field('editor_panel').hidden, 'Top-right settings icon opens only settings');
@@ -189,7 +189,8 @@
             const coat = context.extensionSettings.vefari.items[0];
             check(coat.imagePath === '' && coat.audiences.join() === 'user', 'Text-only item saves to User without uploading');
             check(!window.xssExecuted && !field('items').querySelector('img'), 'Item names are rendered as text, not executable HTML');
-            check(field('items').querySelector('.vefari_card').getBoundingClientRect().width <= 220, 'A single wardrobe card does not stretch across the collection');
+            const columns = getComputedStyle(field('items')).gridTemplateColumns.split(' ').length;
+            check(columns === (innerWidth >= 720 ? 3 : 2) && field('items').querySelector('.vefari_card').getBoundingClientRect().width <= field('items').getBoundingClientRect().width / columns + 1, 'Cards come three to a row on desktop and two on narrow screens');
             const placeholder = field('items').querySelector('.vefari_text_only').getBoundingClientRect();
             check(placeholder.height >= 150 && placeholder.width < placeholder.height && field('items').querySelector('.vefari_text_only svg'), 'Text-only cards show a tall placeholder with the category icon');
             const coatCard = field('items').querySelector('.vefari_card');
@@ -198,7 +199,7 @@
             check(field('status').textContent === '', 'Saving an item leaves the status line empty');
             await click('equip', coat.id);
             const wornCoat = [...field('items').querySelectorAll('.vefari_card')].find(card => card.textContent.includes(coat.name));
-            check(wornCoat.dataset.worn === 'true' && wornCoat.getAttribute('aria-pressed') === 'true' && !wornCoat.querySelector('button[data-action="equip"]') && !wornCoat.textContent.includes('Надето'), 'Active item is indicated only by card highlighting');
+            check(wornCoat.dataset.worn === 'true' && wornCoat.getAttribute('aria-pressed') === 'true' && !wornCoat.querySelector('button[data-action="equip"]') && !wornCoat.textContent.includes('Надето') && !wornCoat.querySelector('.vefari_worn_mark'), 'Active item is indicated only by card highlighting, without a check mark');
             check(prompt() === '[OUTFIT: Player is currently wearing: FULL: A blue wool coat.]', 'User item is injected as a compact bracketed block under the current persona name');
             const slotFor = category => field('slots').querySelector(`.vefari_slot[data-filter="${category}"]`);
             check([...field('slots').querySelectorAll('.vefari_slot')].map(slot => slot.dataset.filter).join() === 'full,accessories,hair', 'Full mode shows the full, accessories and hair slots');
@@ -214,7 +215,7 @@
             chip('all').click();
             chip('shoes').click();
             check(field('items').querySelector('.vefari_empty')?.textContent.includes('В этой категории пусто'), 'Empty category explains itself');
-            field('items').querySelector('.vefari_empty [data-action="add"]').click();
+            field('add').click();
             await idle();
             check(!field('editor_panel').hidden && field('category').value === 'shoes', 'Adding from a filtered category preselects it');
             field('cancel').click();

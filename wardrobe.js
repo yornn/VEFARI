@@ -1,7 +1,7 @@
 // VEFARI domain model. No browser, storage or SillyTavern dependencies.
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-export const VERSION = '0.6.0';
+export const VERSION = '0.6.1';
 export const SCHEMA_VERSION = 3;
 export const CATEGORIES = Object.freeze({
     full: 'Полный наряд',

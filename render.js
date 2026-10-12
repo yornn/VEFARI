@@ -75,11 +75,6 @@ export function createCard(item, { worn }) {
     } else {
         media.append(placeholder(item.category));
     }
-    if (worn) {
-        const mark = element('span', 'vefari_worn_mark');
-        mark.append(createIcon('check'));
-        media.append(mark);
-    }
     const actions = element('div', 'vefari_card_actions');
     actions.append(iconButton('edit', item, 'Изменить', 'edit'), iconButton('delete', item, 'Удалить', 'delete'));
     media.append(actions);
@@ -89,12 +84,23 @@ export function createCard(item, { worn }) {
     return card;
 }
 
+/** An empty outfit slot in the grid that starts adding or importing an item. */
+export function createTile(action, icon, label, description) {
+    const tile = element('button', 'vefari_tile');
+    tile.type = 'button';
+    tile.id = `vefari_${action}`;
+    tile.dataset.action = action;
+    tile.title = description;
+    tile.setAttribute('aria-label', description);
+    const media = element('span', 'vefari_tile_media');
+    media.append(createIcon(icon));
+    tile.append(media, element('span', 'vefari_card_title', label));
+    return tile;
+}
+
 export function createEmpty(filtered) {
     const empty = element('div', 'vefari_empty');
-    const add = element('button', 'vefari_button', 'Добавить вещь');
-    add.type = 'button';
-    add.dataset.action = 'add';
-    empty.append(createIcon('othala'), element('p', '', filtered ? 'В этой категории пусто' : 'Сундук пуст'), add);
+    empty.append(createIcon('othala'), element('p', '', filtered ? 'В этой категории пусто' : 'Сундук пуст'));
     return empty;
 }
 
