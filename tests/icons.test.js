@@ -7,7 +7,7 @@ const numbers = d => d.match(/-?\d+(\.\d+)?/g).map(Number);
 
 test('every category has its own icon', () => {
     for (const category of Object.keys(CATEGORIES)) assert.ok(ICONS[category]?.length, category);
-    for (const name of ['settings', 'close', 'back', 'plus', 'minus', 'check', 'chevron', 'edit', 'delete', 'import', 'export', 'image', 'algiz', 'othala', 'feather']) assert.ok(ICONS[name]?.length, name);
+    for (const name of ['settings', 'close', 'back', 'plus', 'minus', 'check', 'chevron', 'edit', 'delete', 'import', 'export', 'image', 'algiz', 'othala', 'feather', 'text', 'picture']) assert.ok(ICONS[name]?.length, name);
 });
 
 test('the feather differs from the edit quill and stays inside the 24-unit grid', () => {

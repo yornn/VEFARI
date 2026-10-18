@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import {
     CATEGORIES, SCHEMA_VERSION, TARGETS, createDescriber, createState, validateDescriber, validateGeneratorImages, validateImageLimit,
-    validateItem, validateMode, validateOwner,
+    validateItem, validateMode, validateOwner, validateSendModes,
 } from './wardrobe.js';
 
 export const SETTINGS_KEY = 'vefari';
@@ -62,6 +62,12 @@ function migratePrototype(raw, items) {
     return parseAssignments(assignments, items);
 }
 
+// 0.7 and earlier had one switch for both participants; it becomes the same mode for each.
+function legacySendModes(generatorImages) {
+    const mode = validateGeneratorImages(generatorImages ?? true) ? 'image' : 'text';
+    return { bot: mode, user: mode };
+}
+
 export function decodeSettings(raw) {
     if (raw == null) return createState();
     if (!records(raw)) throw new Error('Настройки VEFARI повреждены; исходные данные не изменены.');
@@ -79,7 +85,7 @@ export function decodeSettings(raw) {
         assignments: raw.schemaVersion !== undefined
             ? parseAssignments(raw.assignments, items) : migratePrototype(raw, items),
         // Bridge settings arrived without a schema bump: absent means default.
-        generatorImages: validateGeneratorImages(raw.generatorImages ?? true),
+        sendModes: validateSendModes(raw.sendModes ?? legacySendModes(raw.generatorImages)),
         maxImageRefs: validateImageLimit(raw.maxImageRefs ?? 4),
         // Same for the feather's connection; validation keeps only its four known fields.
         describer: validateDescriber(raw.describer ?? createDescriber()),

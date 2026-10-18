@@ -46,6 +46,18 @@ function placeholder(category) {
     return empty;
 }
 
+/** Settings note: what one participant's outfit sends to the image generator. */
+export function createSendMark(role, name, mode) {
+    const mark = element('span', 'vefari_send_mark');
+    mark.setAttribute('role', 'listitem');
+    mark.dataset.mode = mode;
+    const label = mode === 'image' ? 'текст + картинка' : 'текст';
+    mark.title = `${role} · ${name}: в генератор уходит ${label}`;
+    mark.append(createIcon(mode === 'image' ? 'picture' : 'text'), element('span', 'vefari_send_mark_owner', role),
+        element('span', 'vefari_send_mark_name', name), element('span', '', `— ${label}`));
+    return mark;
+}
+
 export function createChip(value, label, { pressed }) {
     const chip = element('button', 'vefari_chip', label);
     chip.type = 'button';

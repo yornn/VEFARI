@@ -1,7 +1,7 @@
 // VEFARI domain model. No browser, storage or SillyTavern dependencies.
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-export const VERSION = '0.7.0';
+export const VERSION = '0.8.0';
 export const SCHEMA_VERSION = 3;
 export const CATEGORIES = Object.freeze({
     full: 'Полный наряд',
@@ -16,15 +16,21 @@ export const MAX_IMAGE_REFS = 10;
 const MODES = ['full', 'parts'];
 const SEPARATES = new Set(['top', 'bottom', 'shoes']);
 export const DESCRIBER_SOURCES = Object.freeze(['profile', 'custom']);
+// What a participant's worn outfit sends to the image generator: descriptions only, or pictures too.
+export const SEND_MODES = Object.freeze(['image', 'text']);
 const MAX_DESCRIBER_TEXT = 300;
 
 export function createDescriber() {
     return { source: 'profile', profileId: '', customUrl: '', customModel: '' };
 }
 
+export function createSendModes() {
+    return { bot: 'image', user: 'image' };
+}
+
 export function createState() {
     return {
-        schemaVersion: SCHEMA_VERSION, enabled: true, items: [], assignments: [], generatorImages: true, maxImageRefs: 4,
+        schemaVersion: SCHEMA_VERSION, enabled: true, items: [], assignments: [], sendModes: createSendModes(), maxImageRefs: 4,
         describer: createDescriber(),
     };
 }
@@ -36,9 +42,21 @@ export function validateImageLimit(limit) {
     return limit;
 }
 
+/** The single switch of 0.7 and earlier; read only to migrate it into per-participant modes. */
 export function validateGeneratorImages(enabled) {
     if (typeof enabled !== 'boolean') throw new Error('Укажите, отправлять ли картинки нарядов.');
     return enabled;
+}
+
+function validateSendMode(mode) {
+    if (!SEND_MODES.includes(mode)) throw new Error('Режим генератора — «текст» или «текст и картинка».');
+    return mode;
+}
+
+/** User and Char choose separately; both are always present. */
+export function validateSendModes(input) {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Повреждены режимы отправки в генератор.');
+    return Object.fromEntries(TARGETS.map(target => [target, validateSendMode(input[target])]));
 }
 
 /** OpenAI-compatible base URL. Credentials and query strings are refused: a key belongs only in the key field. */
@@ -97,11 +115,11 @@ export function validateItem(input) {
     const description = requiredText(input.description, 'Описание');
     if (!Object.hasOwn(CATEGORIES, input.category)) throw new Error('Неизвестная категория вещи.');
     if (input.imagePath != null && typeof input.imagePath !== 'string') throw new Error('Некорректный путь картинки.');
-    if (input.sendImage != null && typeof input.sendImage !== 'boolean') throw new Error('Некорректный режим отправки картинки.');
     if (!Array.isArray(input.audiences) || !input.audiences.length
         || input.audiences.some(target => !TARGETS.includes(target))) throw new Error('Выберите коллекцию User или Char.');
     const audiences = TARGETS.filter(target => input.audiences.includes(target));
-    return { id, name, description, category: input.category, imagePath: input.imagePath || '', audiences, sendImage: input.sendImage !== false };
+    // The per-item send flag of 0.7 and earlier is gone: the owner's send mode decides.
+    return { id, name, description, category: input.category, imagePath: input.imagePath || '', audiences };
 }
 
 function assignmentFor(state, characterKey, target) {
@@ -128,8 +146,9 @@ export function reduceWardrobe(state, command) {
         case 'set-enabled':
             if (typeof command.enabled !== 'boolean') throw new Error('Укажите состояние гардероба.');
             return { ...state, enabled: command.enabled };
-        case 'set-generator-images':
-            return { ...state, generatorImages: validateGeneratorImages(command.enabled) };
+        case 'set-send-mode':
+            if (!TARGETS.includes(command.target)) throw new Error('Неизвестный владелец наряда.');
+            return { ...state, sendModes: { ...state.sendModes, [command.target]: validateSendMode(command.mode) } };
         case 'set-image-limit':
             return { ...state, maxImageRefs: validateImageLimit(command.limit) };
         case 'set-describer':

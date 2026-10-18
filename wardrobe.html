@@ -25,6 +25,16 @@
                 </fieldset>
                 <ul id="vefari_slots" aria-label="Надето"></ul>
                 <button id="vefari_clear" class="vefari_button vefari_button_quiet" type="button">Снять всё</button>
+                <fieldset id="vefari_send" class="vefari_send">
+                    <legend>В генератор картинок</legend>
+                    <div class="vefari_send_row">
+                        <div class="vefari_cells vefari_send_cells">
+                            <label class="vefari_cell" title="Только текст: в генератор уходят описания вещей"><input id="vefari_send_text" type="radio" name="vefari_send" value="text" aria-label="Только текст"><span data-icon="text"></span></label>
+                            <label class="vefari_cell" title="Текст и картинка: картинки вещей уходят в генератор референсами"><input id="vefari_send_image" type="radio" name="vefari_send" value="image" aria-label="Текст и картинка"><span data-icon="picture"></span></label>
+                        </div>
+                        <span id="vefari_send_caption" class="vefari_send_caption" aria-hidden="true"></span>
+                    </div>
+                </fieldset>
             </div>
         </aside>
         <div class="vefari_scroll">
@@ -46,7 +56,6 @@
                     </section>
                     <section class="vefari_settings_block" aria-labelledby="vefari_settings_generator">
                         <h4 id="vefari_settings_generator">Генератор картинок</h4>
-                        <label class="vefari_rune_toggle"><input id="vefari_generator_images" class="vefari_visually_hidden" type="checkbox"><span class="vefari_rune_box" data-icon="algiz"></span><span>Картинки нарядов в генератор</span></label>
                         <div class="vefari_limit">
                             <label for="vefari_image_limit">Максимум картинок</label>
                             <div class="vefari_stepper">
@@ -57,6 +66,7 @@
                         </div>
                         <p class="vefari_hint">Последняя отправка: <span id="vefari_bridge_report"></span></p>
                         <p class="vefari_hint">Для notsosillynotsoimages (Gemini-compatible): наряды тех, кого генератор рисует, уходят референсами; сверх лимита — только описанием.</p>
+                        <p class="vefari_hint">Текст или текст с картинкой выбирается внизу оружейной, отдельно для User и Char.</p>
                     </section>
                     <section class="vefari_settings_block" aria-labelledby="vefari_settings_exchange">
                         <h4 id="vefari_settings_exchange">Обмен</h4>
@@ -81,8 +91,9 @@
                         <p class="vefari_hint">Нужна модель, которая видит картинки. Профили работают через SillyTavern и его ключи — VEFARI их не читает. Свой ключ хранится только в этом браузере, привязан к адресу и уходит только на него.</p>
                     </section>
                     <section class="vefari_settings_block" aria-labelledby="vefari_settings_prompt">
-                        <h4 id="vefari_settings_prompt">Текст инжекта</h4>
+                        <div class="vefari_prompt_head"><h4 id="vefari_settings_prompt">Текст инжекта</h4><div id="vefari_send_marks" class="vefari_send_marks" role="list" aria-label="Что уходит в генератор картинок"></div></div>
                         <pre id="vefari_prompt"></pre>
+                        <p class="vefari_hint">В чат всегда уходит текст. Картинки — только в генератор картинок и только у того, кому в оружейной выбран режим «текст и картинка»; вещи без картинки и сверх лимита идут текстом.</p>
                     </section>
                 </div>
             </section>
@@ -120,15 +131,8 @@
                                     <button id="vefari_describe" class="vefari_icon_button vefari_describe" type="button" title="Описать по картинке" aria-label="Описать по картинке" data-busy="false"><span data-icon="feather"></span></button>
                                 </div>
                                 <textarea id="vefari_description" rows="4" placeholder="Плотная шерсть цвета пепла, подбитая волчьим мехом, железная фибула у горла" required></textarea>
-                                <span class="vefari_hint">Описание всегда уходит в чат; картинка — только в генератор картинок. Перо напишет описание по картинке для выбранной категории.</span>
+                                <span class="vefari_hint">Описание всегда уходит в чат; картинка — в генератор картинок, если в оружейной выбран режим с картинкой. Перо напишет описание по картинке для выбранной категории.</span>
                             </div>
-                            <fieldset class="vefari_field vefari_fieldset vefari_send_mode">
-                                <legend>Что отправлять в генератор</legend>
-                                <div class="vefari_cells">
-                                    <label class="vefari_cell"><input id="vefari_send_image" type="radio" name="vefari_send_mode" value="image" checked><span>Картинка и текст</span></label>
-                                    <label class="vefari_cell"><input id="vefari_send_text" type="radio" name="vefari_send_mode" value="text"><span>Только текст</span></label>
-                                </div>
-                            </fieldset>
                         </div>
                     </div>
                     <div class="vefari_editor_footer">

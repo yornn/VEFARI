@@ -11,10 +11,10 @@ const body = (text = 'Маша идёт по улице') => ({
 });
 const request = (overrides = {}) => ({ method: 'POST', url, body: JSON.stringify(body()), ...overrides });
 const item = (id, category, extra = {}) => ({
-    id, category, name: id, description: `${id} desc`, imagePath: `/user/images/vefari_refs/${id}.png`, audiences: ['bot', 'user'], sendImage: true, ...extra,
+    id, category, name: id, description: `${id} desc`, imagePath: `/user/images/vefari_refs/${id}.png`, audiences: ['bot', 'user'], ...extra,
 });
 const snapshot = (bot = [], user = []) => ({ characterName: 'Маша', userName: 'Петя', enabled: true, bot: { items: bot }, user: { items: user } });
-const settings = { generatorImages: true, maxImageRefs: 4 };
+const settings = { sendModes: { bot: 'image', user: 'image' }, maxImageRefs: 4 };
 const plan = (overrides = {}) => planOutfits({ snapshot: snapshot(), promptText: 'Маша идёт', generator, settings, ...overrides });
 const ids = items => items.map(entry => entry.id);
 
@@ -61,13 +61,21 @@ test('plan gates sides like the generator face refs', () => {
     assert.equal(plan({ snapshot: snapshot([], [item('suit', 'full')]), promptText: 'Маша и Петя' }).sides[0].name, 'Петя');
 });
 
-test('image items respect global switch, item mode, generator refs and missing files', () => {
-    const worn = snapshot([item('jacket', 'top'), item('jeans', 'bottom', { sendImage: false }), item('boots', 'shoes', { imagePath: '' })]);
+test('image items follow each side\'s send mode, generator refs and missing files', () => {
+    const worn = snapshot([item('jacket', 'top'), item('jeans', 'bottom'), item('boots', 'shoes', { imagePath: '' })]);
     const [side] = plan({ snapshot: worn }).sides;
     assert.deepEqual(ids(side.items), ['jacket', 'jeans', 'boots']);
-    assert.deepEqual(ids(side.imageItems), ['jacket']);
-    assert.deepEqual(plan({ snapshot: worn, settings: { ...settings, generatorImages: false } }).sides[0].imageItems, []);
+    assert.deepEqual(ids(side.imageItems), ['jacket', 'jeans']);
+    assert.deepEqual(plan({ snapshot: worn, settings: { ...settings, sendModes: { bot: 'text', user: 'image' } } }).sides[0].imageItems, []);
     assert.deepEqual(plan({ snapshot: worn, generator: { ...generator, sendRefs: false } }).sides[0].imageItems, []);
+});
+
+test('a text-mode side keeps its descriptions and leaves the image budget to the other', () => {
+    const both = snapshot([item('dress', 'full')], [item('suit', 'full'), item('ring', 'accessories')]);
+    const userText = plan({ snapshot: both, generator: { ...generator, always: { bot: true, user: true } }, settings: { ...settings, sendModes: { bot: 'image', user: 'text' } } });
+    assert.deepEqual(userText.sides.map(entry => [entry.target, ids(entry.items), ids(entry.imageItems)]), [['bot', ['dress'], ['dress']], ['user', ['suit', 'ring'], []]]);
+    const botText = plan({ snapshot: both, generator: { ...generator, always: { bot: true, user: true } }, settings: { sendModes: { bot: 'text', user: 'image' }, maxImageRefs: 2 } });
+    assert.deepEqual(botText.sides.map(entry => ids(entry.imageItems)), [[], ['suit', 'ring']]);
 });
 
 test('limit is shared with bot first', () => {
@@ -80,7 +88,7 @@ test('limit is shared with bot first', () => {
 
 test('augment inserts labelled images before the prompt and keeps the source intact', () => {
     const source = freezeDeep(body());
-    const outfit = plan({ snapshot: snapshot([item('jacket', 'top'), item('jeans', 'bottom', { sendImage: false })]) });
+    const outfit = plan({ snapshot: snapshot([item('jacket', 'top'), item('jeans', 'bottom', { imagePath: '' })]) });
     const result = augmentGeminiBody(source, outfit, new Map([['jacket', { mimeType: 'image/png', base64: 'JACKET' }]]));
     assert.deepEqual(result.contents[0].parts, [
         { inlineData: { mimeType: 'image/png', data: 'FACE' } },

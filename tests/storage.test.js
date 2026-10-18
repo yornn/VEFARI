@@ -23,7 +23,7 @@ test('prototype migration preserves inventory, disabled state, modes and hidden 
     const state = decodeSettings(raw);
     assert.equal(state.schemaVersion, 3);
     assert.equal(state.enabled, false);
-    assert.deepEqual(state.items, raw.items.map(item => ({ ...item, sendImage: true })));
+    assert.deepEqual(state.items, raw.items);
     assert.deepEqual(selectWardrobe(state, owner.characterKey, 'bot').items.map(item => item.id), ['shirt', 'ring']);
     assert.deepEqual(state.assignments[0].itemIds, ['dress', 'shirt', 'ring']);
     assert.equal(selectWardrobe(state, owner.characterKey, 'user').items[0].id, 'dress');
@@ -103,14 +103,30 @@ test('schema 3 validates collection membership and does not revive mismatched as
 });
 test('generator settings default when absent and are validated when present', () => {
     const legacy = JSON.parse(JSON.stringify(wear(inventory(garment('coat')), 'coat')));
-    delete legacy.generatorImages;
+    delete legacy.sendModes;
     delete legacy.maxImageRefs;
     const state = decodeSettings(legacy);
-    assert.equal(state.generatorImages, true);
+    assert.deepEqual(state.sendModes, { bot: 'image', user: 'image' });
     assert.equal(state.maxImageRefs, 4);
-    assert.equal(decodeSettings({ ...legacy, generatorImages: false, maxImageRefs: 9 }).maxImageRefs, 9);
+    assert.equal(decodeSettings({ ...legacy, maxImageRefs: 9 }).maxImageRefs, 9);
     assert.throws(() => decodeSettings({ ...legacy, maxImageRefs: 50 }));
+    assert.deepEqual(decodeSettings({ ...legacy, sendModes: { bot: 'text', user: 'image' } }).sendModes, { bot: 'text', user: 'image' });
+    assert.throws(() => decodeSettings({ ...legacy, sendModes: { bot: 'text' } }));
+    assert.throws(() => decodeSettings({ ...legacy, sendModes: 'text' }));
+});
+
+test('the single generator switch of 0.7 becomes the same mode for both, and item flags are dropped', () => {
+    const legacy = JSON.parse(JSON.stringify(wear(inventory(garment('coat')), 'coat')));
+    delete legacy.sendModes;
+    legacy.items[0].sendImage = false;
+    const off = decodeSettings({ ...legacy, generatorImages: false });
+    assert.deepEqual(off.sendModes, { bot: 'text', user: 'text' });
+    assert.equal(Object.hasOwn(off, 'generatorImages'), false);
+    assert.equal(Object.hasOwn(off.items[0], 'sendImage'), false);
+    assert.deepEqual(decodeSettings({ ...legacy, generatorImages: true }).sendModes, { bot: 'image', user: 'image' });
     assert.throws(() => decodeSettings({ ...legacy, generatorImages: 'no' }));
+    // A saved mode wins over a stale legacy switch.
+    assert.deepEqual(decodeSettings({ ...legacy, generatorImages: false, sendModes: { bot: 'image', user: 'text' } }).sendModes, { bot: 'image', user: 'text' });
 });
 
 test('feather connection defaults when absent and never stores a key', () => {

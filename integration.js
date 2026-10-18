@@ -145,8 +145,10 @@ export function createController(getContext, {
         getActiveOutfits: () => view().snapshot,
         async getImageReferences(target = 'bot') {
             if (!TARGETS.includes(target)) throw new Error('Неизвестный владелец наряда.');
-            const snapshot = view().snapshot;
-            const images = snapshot?.[target].items.filter(item => item.imagePath && item.sendImage !== false) || [];
+            const { state, snapshot } = view();
+            // A participant in text mode sends descriptions only.
+            if (state.sendModes[target] !== 'image') return [];
+            const images = snapshot?.[target].items.filter(item => item.imagePath) || [];
             return Promise.all(images.map(async item => ({ ...item, ...await readImage(item.imagePath) })));
         },
     });

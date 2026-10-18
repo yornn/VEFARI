@@ -9,7 +9,7 @@ const selection = state => selectWardrobe(state, owner.characterKey, owner.targe
 test('domain state is JSON-serializable and starts with no assignments', () => {
     const state = createState();
     assert.deepEqual(state, {
-        schemaVersion: 3, enabled: true, items: [], assignments: [], generatorImages: true, maxImageRefs: 4,
+        schemaVersion: 3, enabled: true, items: [], assignments: [], sendModes: { bot: 'image', user: 'image' }, maxImageRefs: 4,
         describer: { source: 'profile', profileId: '', customUrl: '', customModel: '' },
     });
     assert.deepEqual(JSON.parse(JSON.stringify(state)), state);
@@ -29,17 +29,15 @@ test('text-only items are trimmed and created without mutating the input', () =>
     assert.equal(next.items[0].name, 'Coat');
     assert.equal(next.items[0].description, 'Blue coat');
     assert.equal(next.items[0].imagePath, '');
-    assert.equal(next.items[0].sendImage, true);
+    assert.equal(Object.hasOwn(next.items[0], 'sendImage'), false);
     assert.equal(state.items.length, 0);
 });
 
-test('text-only send mode survives add and edit without resetting to the default', () => {
-    let state = inventory({ ...garment('coat'), sendImage: false });
-    assert.equal(state.items[0].sendImage, false);
-    state = reduceWardrobe(freezeDeep(state), { type: 'edit-item', item: { ...garment('coat'), description: 'Still text only', sendImage: false } });
-    assert.equal(state.items[0].sendImage, false);
-    state = reduceWardrobe(freezeDeep(state), { type: 'edit-item', item: { ...garment('coat'), sendImage: true } });
-    assert.equal(state.items[0].sendImage, true);
+test('the per-item send flag of older versions is dropped, whatever its value', () => {
+    for (const sendImage of [false, true, 'yes']) {
+        const state = inventory({ ...garment('coat'), sendImage });
+        assert.deepEqual(Object.keys(state.items[0]).sort(), ['audiences', 'category', 'description', 'id', 'imagePath', 'name']);
+    }
 });
 
 test('bad commands fail atomically', () => {
@@ -52,7 +50,8 @@ test('bad commands fail atomically', () => {
         { type: 'add-item', item: { ...garment('new'), name: 42 } },
         { type: 'add-item', item: { ...garment('new'), audiences: [] } },
         { type: 'add-item', item: { ...garment('new'), audiences: ['npc'] } },
-        { type: 'add-item', item: { ...garment('new'), sendImage: 'yes' } },
+        { type: 'set-send-mode', target: 'npc', mode: 'text' },
+        { type: 'set-send-mode', target: 'bot', mode: 'pictures' },
         { type: 'edit-item', item: garment('missing') },
         { type: 'wear', ...owner, itemId: 'missing' },
         { type: 'wear', ...owner, target: 'npc', itemId: 'coat' },
@@ -161,12 +160,16 @@ test('changing item audience removes only now-ineligible owner assignments', () 
 });
 test('generator settings commands validate and never mutate', () => {
     const state = freezeDeep(createState());
-    assert.equal(reduceWardrobe(state, { type: 'set-generator-images', enabled: false }).generatorImages, false);
+    const userText = reduceWardrobe(state, { type: 'set-send-mode', target: 'user', mode: 'text' });
+    assert.deepEqual(userText.sendModes, { bot: 'image', user: 'text' });
+    assert.deepEqual(reduceWardrobe(userText, { type: 'set-send-mode', target: 'bot', mode: 'text' }).sendModes, { bot: 'text', user: 'text' });
+    assert.deepEqual(state.sendModes, { bot: 'image', user: 'image' });
     assert.equal(reduceWardrobe(state, { type: 'set-image-limit', limit: 7 }).maxImageRefs, 7);
     for (const limit of [0, 11, 2.5, '3', null]) {
         assert.throws(() => reduceWardrobe(state, { type: 'set-image-limit', limit }), /от 1 до 10/);
     }
-    assert.throws(() => reduceWardrobe(state, { type: 'set-generator-images', enabled: 'yes' }));
+    assert.throws(() => reduceWardrobe(state, { type: 'set-send-mode', target: 'user', mode: true }), /текст/);
+    assert.throws(() => reduceWardrobe(state, { type: 'set-generator-images', enabled: false }), /Неизвестная команда/);
 });
 
 test('feather connection keeps only its four fields and normalizes the endpoint', () => {

@@ -47,18 +47,19 @@ export function parseGeneratorRequest({ method, url, body }, generator) {
     return index < 0 ? null : { body: parsed, promptText: parts[index].text };
 }
 
-/** Sides follow the generator's face gating; the image budget is shared, Char first. */
+/** Sides follow the generator's face gating; each side's send mode allows pictures; the image budget is shared, Char first. */
 export function planOutfits({ snapshot, promptText, generator, settings }) {
     const sides = [];
     if (!snapshot) return { sides };
-    let budget = settings.generatorImages && generator.sendRefs ? settings.maxImageRefs : 0;
+    let budget = generator.sendRefs ? settings.maxImageRefs : 0;
     for (const target of TARGETS) {
         const items = snapshot[target]?.items || [];
         if (!items.length) continue;
         if (!generator.always[target] && !nameMatches(generator.names[target], promptText)) continue;
         const imageItems = [];
+        const withImages = settings.sendModes?.[target] === 'image';
         for (const item of items) {
-            if (budget <= 0 || item.sendImage === false || !item.imagePath) continue;
+            if (!withImages || budget <= 0 || !item.imagePath) continue;
             imageItems.push(item);
             budget--;
         }

@@ -12,7 +12,7 @@ import { retainedImages } from './storage.js';
 import { deleteUnusedImage, imageUrl, loadReference, MAX_IMAGE_BYTES, prepareImage, uploadImage } from './images.js';
 import { createZip, embedOutfitText, extractOutfitText, safeFilename } from './transfer.js';
 import { createEmblem, createIcon, createRunes, fibulaOutline } from './icons.js';
-import { createCard, createChip, createEmpty, createSlot, createTile } from './render.js';
+import { createCard, createChip, createEmpty, createSendMark, createSlot, createTile } from './render.js';
 import { mountWardrobeWindow } from './window.js';
 import { formatReport } from './bridge.js';
 
@@ -79,9 +79,15 @@ function render() {
         field(`tab_${owner}_name`).title = participantNames[owner];
     }
     field('enabled').checked = settings.enabled;
-    field('generator_images').checked = settings.generatorImages;
     field('image_limit').value = String(settings.maxImageRefs);
     field('bridge_report').textContent = formatReport(report);
+    const sendMode = settings.sendModes[target];
+    field(`send_${sendMode}`).checked = true;
+    field('send_caption').textContent = sendMode === 'image' ? 'текст и картинки' : 'только текст';
+    field('send_marks').replaceChildren(
+        createSendMark('User', participantNames.user, settings.sendModes.user),
+        createSendMark('Char', participantNames.bot, settings.sendModes.bot),
+    );
     renderDescriber(settings.describer);
     field('context').hidden = Boolean(character);
     field(`mode_${selection.mode}`).checked = true;
@@ -350,8 +356,6 @@ function editItem(item) {
     field(`audience_${item.audiences.length === 2 ? 'both' : item.audiences[0]}`).checked = true;
     field('image_actions').hidden = !item.imagePath;
     field('export_item').hidden = !item.imagePath;
-    field('send_image').checked = item.sendImage !== false;
-    field('send_text').checked = item.sendImage === false;
     appendImage(field('editor_image'), item);
     showEditor(false);
     field('name').focus();
@@ -544,7 +548,6 @@ async function handleSave() {
         category: field('category').value,
         audiences: audience === 'both' ? ['bot', 'user'] : [audience],
         imagePath: field('remove_image').checked ? '' : previous?.imagePath || '',
-        sendImage: field('send_image').checked,
     };
     validateItem(data);
     if (itemId && !previous) throw new Error('Редактируемая вещь уже удалена.');
@@ -620,8 +623,9 @@ async function init() {
     field('enabled').addEventListener('change', () => runAction(() => {
         controller.dispatch({ type: 'set-enabled', enabled: field('enabled').checked });
     }));
-    field('generator_images').addEventListener('change', () => runAction(() => {
-        controller.dispatch({ type: 'set-generator-images', enabled: field('generator_images').checked });
+    // Saved at once without the busy lock, so focus stays on the switch for the keyboard.
+    field('send').addEventListener('change', event => applySetting(() => {
+        controller.dispatch({ type: 'set-send-mode', target, mode: event.target.value });
     }));
     // A rejected limit leaves the saved value; re-render so the field shows it again.
     field('image_limit').addEventListener('change', () => runAction(() => {

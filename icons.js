@@ -34,6 +34,9 @@ export const ICONS = Object.freeze({
     import: ['M14 3.5H5.5v17h13V8Z', 'M14 3.5V8h4.5', 'M12 10v6.5M9 13.5l3 3 3-3'],
     export: ['M14 3.5H5.5v17h13V8Z', 'M14 3.5V8h4.5', 'M12 16.5V10M9 13l3-3 3 3'],
     image: ['M3.5 5h17v14h-17Z', 'M3.5 16 9 10.5l4 4 2.5-2.5 5 5', 'M16 6.8l1.7 1.7L16 10.2l-1.7-1.7Z'],
+    // The generator switch in the armory: a serifed T for text only, a framed picture for text and image.
+    text: ['M5 5h14', 'M12 5v14', 'M5 5v3M19 5v3', 'M9 19h6'],
+    picture: ['M4.5 5h15v14h-15Z', 'M5.2 15.8 9.5 11.5l3.5 3.5 2.5-2.5 3.3 3.3', 'M15.5 7.2l1.4 1.4-1.4 1.4-1.4-1.4Z'],
     algiz: ['M12 4v16M12 11 6.5 5M12 11l5.5-6'],
     othala: ['M12 3l5.5 5.5L7 19M12 3 6.5 8.5 17 19'],
     full: ['M9.5 3 7 5v5L5 21h14l-2-11V5l-2.5-2L12 5.5Z', 'M7 10h10'],

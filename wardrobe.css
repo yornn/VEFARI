@@ -159,6 +159,15 @@ textarea { min-height: 112px; max-height: 300px; resize: vertical; }
 .vefari_slot_row .vefari_icon_button { position: absolute; top: 50%; right: 6px; width: 26px; height: 26px; padding: 5px; border-color: transparent; transform: translateY(-50%); }
 .vefari_slot_row .vefari_icon_button:hover:not(:disabled) { border-color: var(--vefari-iron-strong); background: var(--vefari-night); }
 #vefari_clear { align-self: flex-end; }
+/* The owner's generator switch sits at the bottom left of the armory: T for text, a picture for text and image. */
+#vefari_owner_panel { flex: 1; }
+.vefari_send { min-width: 0; margin: auto 0 0; padding: 12px 0 0; border: 0; border-top: 1px solid var(--vefari-iron); }
+.vefari_send legend { float: left; width: 100%; margin-bottom: 8px; padding: 0; color: var(--vefari-ash); font: 500 11px/1.2 var(--vefari-caps); letter-spacing: 0.08em; }
+.vefari_send_row { clear: both; display: flex; align-items: center; gap: 10px; min-width: 0; }
+.vefari_send_cells { flex: 0 0 auto; }
+.vefari_send_cells .vefari_cell span { display: grid; place-items: center; width: 40px; height: 32px; padding: 0; }
+.vefari_send_cells .vefari_icon { width: 18px; height: 18px; }
+.vefari_send_caption { min-width: 0; overflow: hidden; color: #a9b4ba; font-size: 12px; line-height: 1.3; text-overflow: ellipsis; }
 
 .vefari_scroll { min-width: 0; min-height: 0; padding: 18px 20px 20px; overflow-y: auto; overscroll-behavior: contain; }
 .vefari_section_heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
@@ -242,6 +251,13 @@ textarea { min-height: 112px; max-height: 300px; resize: vertical; }
 .vefari_stepper input[type="number"] { width: 44px; padding: 4px; border-width: 0 1px; text-align: center; appearance: textfield; -moz-appearance: textfield; }
 .vefari_stepper input::-webkit-inner-spin-button, .vefari_stepper input::-webkit-outer-spin-button { margin: 0; -webkit-appearance: none; }
 .vefari_settings_block:has(#vefari_prompt) { grid-column: 1 / -1; }
+.vefari_prompt_head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; align-self: stretch; }
+.vefari_send_marks { display: flex; flex-wrap: wrap; gap: 6px; }
+.vefari_send_mark { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 3px 9px 3px 7px; border: 1px solid var(--vefari-iron-strong); color: #a9b4ba; font-size: 12px; line-height: 1.3; }
+.vefari_send_mark .vefari_icon { width: 15px; height: 15px; }
+.vefari_send_mark[data-mode="image"] { border-color: #9fc3d659; color: var(--vefari-frost); }
+.vefari_send_mark_owner { color: var(--vefari-snow); font: 500 12px/1.3 var(--vefari-caps); letter-spacing: 0.06em; }
+.vefari_send_mark_name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #vefari_prompt { align-self: stretch; max-height: 220px; margin: 0; padding: 10px 12px; overflow-y: auto; border: 1px solid var(--vefari-iron); background: var(--vefari-deep); color: #b9c3c9; font: 12px/1.6 ui-monospace, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 /* Feather connection: a profile from the plug menu, or the user's own endpoint with a browser-only key. */
 .vefari_settings_describer { grid-column: 1 / -1; }
@@ -283,7 +299,6 @@ textarea { min-height: 112px; max-height: 300px; resize: vertical; }
 .vefari_fieldset { margin: 0 0 14px; padding: 0; border: 0; }
 .vefari_fieldset legend { margin-bottom: 6px; padding: 0; color: #a9b4ba; font-size: 12px; }
 .vefari_fieldset .vefari_cell span { padding: 8px; }
-.vefari_send_mode { max-width: 360px; }
 /* The feather sits on the description's label row; while it writes, it sways and the field waits. */
 .vefari_field_head { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
 .vefari_icon_button.vefari_describe { width: 30px; height: 30px; min-height: 0; margin-top: -8px; padding: 6px; border-color: var(--vefari-iron-strong); color: var(--vefari-frost); }
