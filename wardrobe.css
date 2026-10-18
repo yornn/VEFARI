@@ -88,7 +88,7 @@ button:disabled, input:disabled, select:disabled { cursor: not-allowed; opacity:
 .vefari_button_quiet:hover:not(:disabled) { background: transparent; border-color: var(--vefari-iron); }
 
 /* Fields */
-input[type="text"], input[type="number"], select, textarea {
+input[type="text"], input[type="number"], input[type="url"], input[type="password"], select, textarea {
     display: block; width: 100%; min-width: 0; padding: 8px 10px; margin: 0;
     border: 1px solid var(--vefari-iron-strong); background: var(--vefari-deep); color: var(--vefari-snow);
     font: 400 14px/1.4 var(--vefari-body);
@@ -99,7 +99,7 @@ select {
     background: var(--vefari-deep) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238d989f' stroke-width='1.6' stroke-linecap='square'%3E%3Cpath d='M6.5 9.5 12 15l5.5-5.5'/%3E%3C/svg%3E") right 9px center / 16px no-repeat;
 }
 input::placeholder, textarea::placeholder { color: var(--vefari-ash-dim); opacity: 1; }
-input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus { outline: none; border-color: var(--vefari-frost); }
+input[type="text"]:focus, input[type="number"]:focus, input[type="url"]:focus, input[type="password"]:focus, select:focus, textarea:focus { outline: none; border-color: var(--vefari-frost); }
 textarea { min-height: 112px; max-height: 300px; resize: vertical; }
 .vefari_field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; min-width: 0; color: #a9b4ba; font-size: 12px; }
 
@@ -243,6 +243,17 @@ textarea { min-height: 112px; max-height: 300px; resize: vertical; }
 .vefari_stepper input::-webkit-inner-spin-button, .vefari_stepper input::-webkit-outer-spin-button { margin: 0; -webkit-appearance: none; }
 .vefari_settings_block:has(#vefari_prompt) { grid-column: 1 / -1; }
 #vefari_prompt { align-self: stretch; max-height: 220px; margin: 0; padding: 10px 12px; overflow-y: auto; border: 1px solid var(--vefari-iron); background: var(--vefari-deep); color: #b9c3c9; font: 12px/1.6 ui-monospace, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+/* Feather connection: a profile from the plug menu, or the user's own endpoint with a browser-only key. */
+.vefari_settings_describer { grid-column: 1 / -1; }
+.vefari_settings_block .vefari_field { align-self: stretch; margin-bottom: 0; }
+.vefari_settings_describer > .vefari_field { width: 100%; max-width: 420px; }
+.vefari_settings_describer > .vefari_hint { max-width: 640px; }
+.vefari_describer_custom { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); align-items: start; gap: 10px 14px; align-self: stretch; padding-left: 12px; border-left: 1px solid var(--vefari-iron-strong); }
+#vefari_describer_check { grid-column: 1 / -1; justify-self: start; }
+.vefari_key_state { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+/* The quiet button's text lines up with the hint above it. */
+.vefari_key_state .vefari_button { min-height: 28px; margin-left: -8px; padding: 3px 8px; font-size: 12px; }
+#vefari_describer_check { min-height: 30px; padding: 4px 12px; font-size: 12px; }
 
 /* Editor: picture on the left, fields on the right, actions pinned to the bottom. */
 .vefari_scroll { --vefari-pad: 20px; }
@@ -273,6 +284,13 @@ textarea { min-height: 112px; max-height: 300px; resize: vertical; }
 .vefari_fieldset legend { margin-bottom: 6px; padding: 0; color: #a9b4ba; font-size: 12px; }
 .vefari_fieldset .vefari_cell span { padding: 8px; }
 .vefari_send_mode { max-width: 360px; }
+/* The feather sits on the description's label row; while it writes, it sways and the field waits. */
+.vefari_field_head { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
+.vefari_icon_button.vefari_describe { width: 30px; height: 30px; min-height: 0; margin-top: -8px; padding: 6px; border-color: var(--vefari-iron-strong); color: var(--vefari-frost); }
+.vefari_describe[data-busy="true"] { border-color: var(--vefari-frost); background: #9fc3d612; }
+.vefari_describe[data-busy="true"] .vefari_icon { animation: vefari-quill 900ms var(--vefari-ease) infinite alternate; transform-origin: 20% 83%; }
+@keyframes vefari-quill { from { transform: rotate(-9deg); } to { transform: rotate(7deg) translateX(1px); } }
+textarea[aria-busy="true"] { border-style: dashed; color: var(--vefari-ash); }
 .vefari_field > .vefari_hint { margin-top: 2px; }
 .vefari_editor_footer {
     position: sticky; bottom: 0; z-index: 2; display: flex; align-items: center; gap: 8px;
@@ -304,7 +322,7 @@ textarea { min-height: 112px; max-height: 300px; resize: vertical; }
     .vefari_grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
     .vefari_card_actions .vefari_icon_button { width: 36px; height: 36px; padding: 8px; }
     .vefari_card_actions .vefari_icon { width: 18px; height: 18px; }
-    input[type="text"], input[type="number"], select, textarea { font-size: 16px; }
+    input[type="text"], input[type="number"], input[type="url"], input[type="password"], select, textarea { font-size: 16px; }
 }
 @media (max-width: 540px) {
     #vefari_window { height: calc(100vh - 18px); height: calc(100dvh - 18px); }
@@ -314,6 +332,7 @@ textarea { min-height: 112px; max-height: 300px; resize: vertical; }
     .vefari_emblem { width: 30px; height: 30px; }
     .vefari_button, .vefari_icon_button { min-height: 38px; }
     .vefari_header .vefari_icon_button { width: 38px; height: 38px; }
+    .vefari_icon_button.vefari_describe { width: 38px; height: 38px; padding: 9px; }
     .vefari_form_row { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 380px) {

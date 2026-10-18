@@ -112,3 +112,16 @@ test('generator settings default when absent and are validated when present', ()
     assert.throws(() => decodeSettings({ ...legacy, maxImageRefs: 50 }));
     assert.throws(() => decodeSettings({ ...legacy, generatorImages: 'no' }));
 });
+
+test('feather connection defaults when absent and never stores a key', () => {
+    const legacy = JSON.parse(JSON.stringify(inventory(garment('coat'))));
+    delete legacy.describer;
+    assert.deepEqual(decodeSettings(legacy).describer, { source: 'profile', profileId: '', customUrl: '', customModel: '' });
+    const tampered = { ...legacy, describer: { source: 'custom', customUrl: 'https://api.example.com/v1', customModel: 'm', key: 'sk-secret', apiKey: 'sk-secret' } };
+    const context = { extensionSettings: {}, saveSettingsDebounced() {} };
+    writeSettings(context, decodeSettings(tampered));
+    assert.ok(!JSON.stringify(context.extensionSettings).includes('sk-secret'));
+    assert.equal(context.extensionSettings.vefari.describer.customUrl, 'https://api.example.com/v1');
+    assert.throws(() => decodeSettings({ ...legacy, describer: { source: 'custom', customUrl: 'https://u:p@api.example.com' } }));
+    assert.throws(() => decodeSettings({ ...legacy, describer: 'custom' }));
+});

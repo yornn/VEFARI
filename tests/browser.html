@@ -75,7 +75,26 @@
             saveSettingsDebounced() { saveCount++; },
             getRequestHeaders() { return { 'Content-Type': 'application/json', 'X-CSRF-Token': 'smoke-test' }; },
             setExtensionPrompt(key, ...value) { prompts.set(key, value); },
+            CONNECT_API_MAP: { openrouter: { selected: 'openai', source: 'openrouter' }, koboldcpp: { selected: 'textgenerationwebui', type: 'koboldcpp' } },
+            ConnectionManagerRequestService: {
+                getSupportedProfiles: () => [
+                    { id: 'vision', name: 'Vision', api: 'openrouter', model: 'google/gemini-2.5-flash', 'secret-id': 'secret-of-the-profile' },
+                    { id: 'kobold', name: 'Kobold', api: 'koboldcpp', model: 'local' },
+                ],
+                sendRequest: (profileId, messages, maxTokens, options) => answer({ route: 'profile', profileId, messages, maxTokens, options }, options.signal),
+            },
+            ChatCompletionService: {
+                processRequest: (payload, options, extract, signal) => answer({ route: 'custom', payload }, signal),
+            },
         };
+        // Model doubles for the feather: a fixed reply, or 'hang' until the request is aborted.
+        let modelReply = { content: '' };
+        const modelCalls = [];
+        function answer(call, signal) {
+            modelCalls.push(call);
+            if (modelReply === 'hang') return new Promise((resolve, reject) => signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError'))));
+            return Promise.resolve(modelReply);
+        }
         window.SillyTavern = { getContext: () => context };
         window.jQuery = callback => callback();
         window.toastr = { error: message => errors.push(message) };
@@ -338,6 +357,73 @@
             decoded.src = `data:${references[0].mimeType};base64,${references[0].base64}`;
             await decoded.decode();
             check(decoded.naturalWidth === 1024 && decoded.naturalHeight === 512, 'Reference is resized proportionally');
+
+            // The feather: a connection in settings, a description from the editor's picture.
+            field('settings_toggle').click();
+            const sources = [...field('describer_source').options].map(option => option.value);
+            check(sources.includes('profile:vision') && !sources.includes('profile:kobold') && sources.includes('custom'), 'Feather connection offers Chat Completion profiles and an own endpoint');
+            change('describer_source', 'profile:vision');
+            check(context.extensionSettings.vefari.describer.profileId === 'vision' && field('describer_custom').hidden && field('describer_note').textContent.includes('gemini-2.5-flash'), 'Choosing a profile stores only its ID and shows its model');
+            check(!JSON.stringify(context.extensionSettings.vefari).includes('secret-of-the-profile'), 'Profile secrets are never copied into wardrobe settings');
+            check(field('settings_panel').scrollWidth <= field('settings_panel').clientWidth + 1, 'Settings with the feather block fit without horizontal scrolling');
+            field('back').click();
+            field('add').click();
+            check(field('describe').querySelector('svg') && field('describe').getAttribute('aria-label') === 'Описать по картинке', 'Editor shows the labelled feather next to the description');
+            field('describe').click();
+            check(field('status').dataset.error === 'true' && field('status').textContent.includes('картинку') && !modelCalls.length, 'Feather without a picture asks for one and sends nothing');
+            field('cancel').click();
+            await click('edit', boots.id);
+            modelReply = { content: '"oxblood leather knee-high boots with brass buckles."' };
+            field('describe').click();
+            await wait(() => field('describe').dataset.busy === 'false' && field('status').textContent.includes('Описание готово'));
+            const profileCall = modelCalls.at(-1);
+            check(profileCall.route === 'profile' && profileCall.profileId === 'vision' && profileCall.messages[0].content[0].image_url.url.startsWith('data:image/png;base64,') && profileCall.messages[0].content[1].text.includes('describe only the footwear'), 'Feather sends the saved picture with the shoes prompt through the profile');
+            check(field('description').value === 'oxblood leather knee-high boots with brass buckles' && !field('description').readOnly, 'The cleaned description fills the field and the field is editable again');
+            modelReply = { content: 'NO_OUTFIT' };
+            field('describe').click();
+            await wait(() => field('describe').dataset.busy === 'false' && field('status').dataset.error === 'true');
+            check(field('status').textContent.includes('Обувь') && field('description').value.startsWith('oxblood'), 'NO_OUTFIT reports the empty category and keeps the text');
+            modelReply = 'hang';
+            field('describe').click();
+            await wait(() => field('describe').dataset.busy === 'true');
+            check(field('description').readOnly && field('describe').getAttribute('aria-label') === 'Остановить описание', 'While writing, the field waits and the feather becomes a stop button');
+            field('describe').click();
+            check(field('describe').dataset.busy === 'false' && field('status').textContent === 'Описание отменено.', 'A second click cancels the description');
+            field('cancel').click();
+            check(context.extensionSettings.vefari.items.find(item => item.id === boots.id).description === 'Black leather boots', 'A generated description is only a draft until the item is saved');
+
+            field('settings_toggle').click();
+            change('describer_source', 'custom');
+            check(!field('describer_custom').hidden && context.extensionSettings.vefari.describer.source === 'custom', 'Own endpoint shows its address, key and model fields');
+            change('describer_url', 'https://user:pw@api.example.com/v1');
+            check(field('status').dataset.error === 'true' && context.extensionSettings.vefari.describer.customUrl === '' && field('describer_url').value === '', 'An address with credentials is refused and not stored');
+            change('describer_url', 'https://api.example.com/v1/chat/completions');
+            check(context.extensionSettings.vefari.describer.customUrl === 'https://api.example.com/v1', 'A pasted full endpoint is trimmed to its base URL');
+            change('describer_key', 'sk-test-123');
+            check(field('describer_key').value === '' && localStorage.getItem('vefari_describer_key').includes('sk-test-123'), 'The key field empties itself and the key stays in browser storage');
+            check(!JSON.stringify(context.extensionSettings).includes('sk-test-123') && !field('settings_panel').textContent.includes('sk-test-123'), 'The key is never written to SillyTavern settings or shown on screen');
+            check(field('describer_key_state').textContent.includes('https://api.example.com') && !field('describer_forget').hidden, 'Key state names the origin the key is bound to');
+            change('describer_model', 'vision-model');
+            field('describer_check').click();
+            await idle();
+            check(field('status').dataset.error !== 'true' && field('describer_models').options.length === 2, 'Checking the endpoint through SillyTavern loads its models with the saved key');
+            field('back').click();
+            await click('edit', boots.id);
+            modelReply = { content: 'black leather riding boots' };
+            field('describe').click();
+            await wait(() => field('describe').dataset.busy === 'false' && field('status').textContent.includes('Описание готово'));
+            const customCall = modelCalls.at(-1).payload;
+            check(customCall.chat_completion_source === 'custom' && customCall.custom_url === 'https://api.example.com/v1' && customCall.model === 'vision-model' && customCall.secret_id && JSON.parse(customCall.custom_include_headers).Authorization === 'Bearer sk-test-123', 'Own endpoint request carries the key only in its own header and no stored secret');
+            field('cancel').click();
+            field('settings_toggle').click();
+            change('describer_url', 'https://other.example.net/v1');
+            check(!localStorage.getItem('vefari_describer_key') && field('status').textContent.includes('удалён') && field('describer_forget').hidden, 'Moving to another host forgets the key instead of sending it there');
+            field('back').click();
+            await click('edit', boots.id);
+            field('describe').click();
+            await wait(() => field('describe').dataset.busy === 'false' && field('status').textContent.includes('Описание готово'));
+            check(modelCalls.at(-1).payload.custom_include_headers === '' && modelCalls.at(-1).payload.custom_url === 'https://other.example.net/v1', 'Without a key for this host the request carries no key at all');
+            field('cancel').click();
             await click('edit', boots.id);
             check(!field('image_actions').hidden && field('armory').inert && field('controls').dataset.view === 'editor', 'Editing an item with a picture offers replace/remove and locks the armory');
             const kept = field('description').value;

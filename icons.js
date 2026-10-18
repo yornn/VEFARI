@@ -25,6 +25,11 @@ export const ICONS = Object.freeze({
     check: ['M5 12.5l4.5 4.5L19 7'],
     chevron: ['M6.5 9.5 12 15l5.5-5.5'],
     edit: ['M20 3.5C13.5 5 8.8 9.6 7 17c6-2 10.8-6.6 13-13.5Z', 'M17.5 6 9 14.5', 'M7 17l-3.5 3.5'],
+    // A split-vane feather, not the quill of `edit`: it writes the description from the picture.
+    feather: [
+        'M19.2 4C16.3 4.1 13.5 5.3 11.1 7.7L11.5 10.5 9.5 9.4C7.7 11.7 7.3 14.2 7.9 16.6C10.3 16.9 12.7 16.4 14.4 14.7L14.1 12 16 13C17.8 10.8 19 7.8 19.2 4Z',
+        'M4.8 20C8.8 15.1 12.9 10.7 17.3 6.6',
+    ],
     delete: ['M4 6.5h16', 'M9.5 6.5v-3h5v3', 'M6 6.5 7.2 20.5h9.6L18 6.5', 'M10 10v7M14 10v7'],
     import: ['M14 3.5H5.5v17h13V8Z', 'M14 3.5V8h4.5', 'M12 10v6.5M9 13.5l3 3 3-3'],
     export: ['M14 3.5H5.5v17h13V8Z', 'M14 3.5V8h4.5', 'M12 16.5V10M9 13l3-3 3 3'],

@@ -63,6 +63,23 @@
                         <button id="vefari_export_all" class="vefari_button" type="button"><span data-icon="export"></span>Экспорт всех нарядов</button>
                         <p class="vefari_hint">ZIP: в каждую картинку вшито описание вещи.</p>
                     </section>
+                    <section class="vefari_settings_block vefari_settings_describer" aria-labelledby="vefari_settings_describer">
+                        <h4 id="vefari_settings_describer">Описание по картинке</h4>
+                        <label class="vefari_field">Подключение для пера<select id="vefari_describer_source"></select></label>
+                        <p id="vefari_describer_note" class="vefari_hint" hidden></p>
+                        <div id="vefari_describer_custom" class="vefari_describer_custom" hidden>
+                            <label class="vefari_field">Адрес API, OpenAI-совместимый<input id="vefari_describer_url" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://api.example.com/v1"></label>
+                            <div class="vefari_field">
+                                <label for="vefari_describer_key">Ключ</label>
+                                <input id="vefari_describer_key" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Вставьте ключ и нажмите Enter">
+                                <div class="vefari_key_state"><span id="vefari_describer_key_state" class="vefari_hint" aria-live="polite"></span><button id="vefari_describer_forget" class="vefari_button vefari_button_quiet" type="button" hidden>Забыть ключ</button></div>
+                            </div>
+                            <label class="vefari_field">Модель<input id="vefari_describer_model" type="text" list="vefari_describer_models" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="gpt-4o-mini"></label>
+                            <datalist id="vefari_describer_models"></datalist>
+                            <button id="vefari_describer_check" class="vefari_button" type="button">Проверить и загрузить модели</button>
+                        </div>
+                        <p class="vefari_hint">Нужна модель, которая видит картинки. Профили работают через SillyTavern и его ключи — VEFARI их не читает. Свой ключ хранится только в этом браузере, привязан к адресу и уходит только на него.</p>
+                    </section>
                     <section class="vefari_settings_block" aria-labelledby="vefari_settings_prompt">
                         <h4 id="vefari_settings_prompt">Текст инжекта</h4>
                         <pre id="vefari_prompt"></pre>
@@ -97,7 +114,14 @@
                                 </fieldset>
                                 <label class="vefari_field">Категория <select id="vefari_category"></select></label>
                             </div>
-                            <label class="vefari_field">Описание для модели <textarea id="vefari_description" rows="4" placeholder="Плотная шерсть цвета пепла, подбитая волчьим мехом, железная фибула у горла" required></textarea><span class="vefari_hint">Описание всегда уходит в чат; картинка — только в генератор картинок.</span></label>
+                            <div class="vefari_field">
+                                <div class="vefari_field_head">
+                                    <label for="vefari_description">Описание для модели</label>
+                                    <button id="vefari_describe" class="vefari_icon_button vefari_describe" type="button" title="Описать по картинке" aria-label="Описать по картинке" data-busy="false"><span data-icon="feather"></span></button>
+                                </div>
+                                <textarea id="vefari_description" rows="4" placeholder="Плотная шерсть цвета пепла, подбитая волчьим мехом, железная фибула у горла" required></textarea>
+                                <span class="vefari_hint">Описание всегда уходит в чат; картинка — только в генератор картинок. Перо напишет описание по картинке для выбранной категории.</span>
+                            </div>
                             <fieldset class="vefari_field vefari_fieldset vefari_send_mode">
                                 <legend>Что отправлять в генератор</legend>
                                 <div class="vefari_cells">

@@ -1,7 +1,8 @@
 // VEFARI persistence boundary: validate stored data before it reaches the domain.
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import {
-    CATEGORIES, SCHEMA_VERSION, TARGETS, createState, validateGeneratorImages, validateImageLimit, validateItem, validateMode, validateOwner,
+    CATEGORIES, SCHEMA_VERSION, TARGETS, createDescriber, createState, validateDescriber, validateGeneratorImages, validateImageLimit,
+    validateItem, validateMode, validateOwner,
 } from './wardrobe.js';
 
 export const SETTINGS_KEY = 'vefari';
@@ -80,6 +81,8 @@ export function decodeSettings(raw) {
         // Bridge settings arrived without a schema bump: absent means default.
         generatorImages: validateGeneratorImages(raw.generatorImages ?? true),
         maxImageRefs: validateImageLimit(raw.maxImageRefs ?? 4),
+        // Same for the feather's connection; validation keeps only its four known fields.
+        describer: validateDescriber(raw.describer ?? createDescriber()),
     };
 }
 

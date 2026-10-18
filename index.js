@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 import { CATEGORIES, MAX_IMAGE_REFS, VERSION, categoriesForMode, validateItem } from './wardrobe.js';
+import { chatProfiles, listCustomModels, requestDescription } from './describe.js';
+import { createKeyStore } from './keystore.js';
 import { createController } from './integration.js';
 import { createId } from './ids.js';
 import { retainedImages } from './storage.js';
@@ -28,6 +30,9 @@ let settingsOpen = false;
 let editorOpen = false;
 let wardrobeWindow;
 let participantNames = { user: '{{user}}', bot: 'Персонаж' };
+let describing = null;
+let profileOptions = '';
+const keys = createKeyStore();
 const field = id => root.querySelector(`#vefari_${id}`);
 
 // Notes fade on their own; errors stay until the next action.
@@ -77,6 +82,7 @@ function render() {
     field('generator_images').checked = settings.generatorImages;
     field('image_limit').value = String(settings.maxImageRefs);
     field('bridge_report').textContent = formatReport(report);
+    renderDescriber(settings.describer);
     field('context').hidden = Boolean(character);
     field(`mode_${selection.mode}`).checked = true;
     field('mode').disabled = !character;
@@ -108,6 +114,152 @@ function render() {
 function refreshView() {
     try { render(); }
     catch (error) { status(error.message, true); }
+}
+
+// Profiles are listed by name only; their keys stay inside SillyTavern.
+function renderDescriber(describer) {
+    const { available, profiles } = chatProfiles(getContext());
+    const select = field('describer_source');
+    const options = JSON.stringify(profiles.map(({ id, name }) => [id, name]));
+    if (options !== profileOptions) {
+        profileOptions = options;
+        const group = document.createElement('optgroup');
+        group.label = 'Профили подключения';
+        group.append(...profiles.map(profile => new Option(profile.name, `profile:${profile.id}`)));
+        const own = document.createElement('optgroup');
+        own.label = 'Без профиля';
+        own.append(new Option('Свой адрес и ключ', 'custom'));
+        select.replaceChildren(new Option('Не выбрано', ''), ...(profiles.length ? [group] : []), own);
+    }
+    const profile = profiles.find(entry => entry.id === describer.profileId);
+    select.value = describer.source === 'custom' ? 'custom' : profile ? `profile:${profile.id}` : '';
+    let note = '';
+    if (describer.source !== 'custom') {
+        if (!available) note = 'Менеджер подключений SillyTavern выключен — доступен только свой адрес и ключ.';
+        else if (describer.profileId && !profile) note = 'Сохранённый профиль не найден: выберите другой.';
+        else if (!profiles.length) note = 'Профилей Chat Completion нет: создайте его в меню с розеткой SillyTavern.';
+        else if (profile) note = `Модель профиля: ${profile.model || 'не указана'}.`;
+    }
+    field('describer_note').textContent = note;
+    field('describer_note').hidden = !note;
+    field('describer_custom').hidden = describer.source !== 'custom';
+    // A re-render must not overwrite what the user is typing.
+    for (const [id, value] of [['describer_url', describer.customUrl], ['describer_model', describer.customModel]]) {
+        if (!field(id).matches(':focus')) field(id).value = value;
+    }
+    const saved = keys.state(describer.customUrl);
+    field('describer_key_state').textContent = saved.status === 'saved'
+        ? `Ключ сохранён в этом браузере для ${saved.origin}.`
+        : saved.status === 'other'
+            ? `Сохранённый ключ привязан к ${saved.origin} и сюда не уйдёт.`
+            : 'Ключ не сохранён: запрос уйдёт без него, как для локальной модели.';
+    field('describer_forget').hidden = saved.status === 'none';
+}
+
+// Text settings save on change without the busy lock, which would steal focus from the next field.
+function applySetting(change) {
+    try { change(); }
+    catch (error) { status(error.message, true); }
+    refreshView();
+}
+
+function setDescriber(patch) {
+    controller.dispatch({ type: 'set-describer', describer: patch });
+}
+
+function changeEndpoint(value) {
+    const before = keys.state(controller.view().state.describer.customUrl);
+    setDescriber({ customUrl: value });
+    // A key belongs to one host: moving to another drops it instead of keeping it around.
+    if (before.status !== 'none' && keys.state(controller.view().state.describer.customUrl).status !== 'saved') {
+        keys.clear();
+        status('Адрес сменился: ключ от прежнего адреса удалён из браузера. Введите ключ для нового.');
+    }
+}
+
+async function checkEndpoint() {
+    const { describer } = controller.view().state;
+    status('Проверяю адрес API…');
+    const models = await listCustomModels(getContext(), describer, keys.read(describer.customUrl));
+    field('describer_models').replaceChildren(...models.map(id => new Option(id, id)));
+    status(models.length
+        ? `Адрес отвечает, моделей: ${models.length}. Выберите модель в поле «Модель».`
+        : 'Адрес отвечает, но список моделей пуст: впишите модель вручную.');
+}
+
+function savedImagePath() {
+    return editingId ? controller.view().state.items.find(entry => entry.id === editingId)?.imagePath || '' : '';
+}
+
+/** The picture the editor shows right now: a new file, an imported PNG, or the saved one. */
+async function editorImage() {
+    const file = field('image').files[0] || pendingImport;
+    if (file) return { mimeType: 'image/png', base64: await prepareImage(file) };
+    return loadReference(savedImagePath());
+}
+
+function setDescribing(active) {
+    const label = active ? 'Остановить описание' : 'Описать по картинке';
+    field('describe').dataset.busy = String(active);
+    field('describe').title = label;
+    field('describe').setAttribute('aria-label', label);
+    field('description').readOnly = active;
+    field('description').setAttribute('aria-busy', String(active));
+}
+
+function cancelDescribing(reason) {
+    if (!describing) return;
+    describing.abort(reason);
+    describing = null;
+    setDescribing(false);
+}
+
+/** Runs beside the busy lock: the editor stays usable and the feather itself is the stop button. */
+async function describeOutfit() {
+    if (describing) {
+        cancelDescribing('user');
+        status('Описание отменено.');
+        return;
+    }
+    if (busy) return;
+    const hasImage = !field('remove_image').checked && Boolean(field('image').files.length || pendingImport || savedImagePath());
+    if (!hasImage) {
+        status('Сначала добавьте картинку: перо описывает то, что на ней.', true);
+        return;
+    }
+    if (field('description').value.trim() && !window.confirm('Заменить текущее описание новым?')) return;
+    const category = field('category').value;
+    const { describer } = controller.view().state;
+    const abort = new AbortController();
+    describing = abort;
+    setDescribing(true);
+    status(`Перо смотрит на картинку: ${CATEGORIES[category]}…`);
+    try {
+        const image = await editorImage();
+        if (abort.signal.aborted) return;
+        const description = await requestDescription(getContext(), describer, {
+            category,
+            image,
+            key: describer.source === 'custom' ? keys.read(describer.customUrl) : '',
+            signal: abort.signal,
+        });
+        // A closed, saved or reset editor gets nothing written into it.
+        if (abort.signal.aborted) return;
+        if (description === null) {
+            status(`На картинке не нашлось ничего для категории «${CATEGORIES[category]}». Проверьте категорию или картинку.`, true);
+            return;
+        }
+        field('description').value = description;
+        dirty = true;
+        status('Описание готово: проверьте его и сохраните вещь.');
+    } catch (error) {
+        if (!abort.signal.aborted) status(error.message || String(error), true);
+    } finally {
+        if (describing === abort) {
+            describing = null;
+            setDescribing(false);
+        }
+    }
 }
 
 function showSettings(show, focus = true) {
@@ -165,6 +317,7 @@ function ownerCommand(type, extra = {}) {
 }
 
 function resetEditor() {
+    cancelDescribing('reset');
     editingId = null;
     pendingImport = null;
     field('form').reset();
@@ -518,6 +671,38 @@ async function init() {
         field('import_file').value = '';
         if (file) void runAction(() => handleImport(file));
     });
+    field('describe').addEventListener('click', () => { void describeOutfit(); });
+    field('describer_source').addEventListener('change', event => {
+        const { value } = event.target;
+        applySetting(() => setDescriber(value === 'custom'
+            ? { source: 'custom' }
+            : { source: 'profile', profileId: value.startsWith('profile:') ? value.slice('profile:'.length) : '' }));
+    });
+    field('describer_url').addEventListener('change', event => applySetting(() => changeEndpoint(event.target.value)));
+    field('describer_model').addEventListener('change', event => applySetting(() => setDescriber({ customModel: event.target.value })));
+    for (const id of ['describer_url', 'describer_key', 'describer_model']) {
+        field(id).addEventListener('keydown', event => {
+            if (event.key !== 'Enter') return;
+            event.preventDefault();
+            event.target.blur();
+        });
+    }
+    field('describer_key').addEventListener('change', event => {
+        const { value } = event.target;
+        // The field never keeps the key: it is saved or discarded right away.
+        event.target.value = '';
+        if (!value.trim()) return;
+        applySetting(() => {
+            keys.write(controller.view().state.describer.customUrl, value);
+            status('Ключ сохранён только в этом браузере.');
+        });
+    });
+    field('describer_forget').addEventListener('click', () => {
+        keys.clear();
+        refreshView();
+        status('Ключ удалён из этого браузера.');
+    });
+    field('describer_check').addEventListener('click', () => { void runAction(checkEndpoint); });
     field('export_item').addEventListener('click', () => { void runAction(exportItem); });
     field('export_all').addEventListener('click', () => { void runAction(exportAll); });
     field('mode').addEventListener('change', event => runAction(() => {

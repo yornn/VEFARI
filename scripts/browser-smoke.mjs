@@ -36,6 +36,14 @@ const server = createServer(async (request, response) => {
                 reportResult(data);
                 return;
             }
+            // SillyTavern's model list route: answers only when our own key arrives in the header.
+            if (pathname === '/api/backends/chat-completions/status') {
+                const headers = data.custom_include_headers ? JSON.parse(data.custom_include_headers) : {};
+                const authorized = data.chat_completion_source === 'custom' && data.secret_id && headers.Authorization === 'Bearer sk-test-123';
+                response.writeHead(authorized ? 200 : 401, { 'Content-Type': 'application/json' })
+                    .end(JSON.stringify(authorized ? { data: [{ id: 'vision-model' }, { id: 'other-model' }] } : { error: true }));
+                return;
+            }
             if (pathname === '/api/images/upload') {
                 const path = `/user/images/${data.ch_name}/${data.filename}.${data.format}`;
                 files.set(path, Buffer.from(data.image, 'base64'));

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { categoriesForMode, createState, reduceWardrobe, selectWardrobe, selectCollection } from '../wardrobe.js';
+import { categoriesForMode, createState, normalizeEndpoint, reduceWardrobe, selectWardrobe, selectCollection } from '../wardrobe.js';
 import { createId } from '../ids.js';
 import { freezeDeep, garment, inventory, owner, wear } from './fixtures.js';
 
@@ -8,7 +8,10 @@ const selection = state => selectWardrobe(state, owner.characterKey, owner.targe
 
 test('domain state is JSON-serializable and starts with no assignments', () => {
     const state = createState();
-    assert.deepEqual(state, { schemaVersion: 3, enabled: true, items: [], assignments: [], generatorImages: true, maxImageRefs: 4 });
+    assert.deepEqual(state, {
+        schemaVersion: 3, enabled: true, items: [], assignments: [], generatorImages: true, maxImageRefs: 4,
+        describer: { source: 'profile', profileId: '', customUrl: '', customModel: '' },
+    });
     assert.deepEqual(JSON.parse(JSON.stringify(state)), state);
     assert.deepEqual(selection(state), { mode: 'full', items: [] });
     assert.equal(state.assignments.length, 0);
@@ -164,6 +167,32 @@ test('generator settings commands validate and never mutate', () => {
         assert.throws(() => reduceWardrobe(state, { type: 'set-image-limit', limit }), /от 1 до 10/);
     }
     assert.throws(() => reduceWardrobe(state, { type: 'set-generator-images', enabled: 'yes' }));
+});
+
+test('feather connection keeps only its four fields and normalizes the endpoint', () => {
+    const state = freezeDeep(createState());
+    const custom = reduceWardrobe(state, {
+        type: 'set-describer', describer: { source: 'custom', customUrl: ' https://api.example.com/v1/chat/completions/ ', customModel: ' vision ', apiKey: 'sk-secret' },
+    });
+    assert.deepEqual(custom.describer, { source: 'custom', profileId: '', customUrl: 'https://api.example.com/v1', customModel: 'vision' });
+    assert.ok(!JSON.stringify(custom).includes('sk-secret'));
+    const profile = reduceWardrobe(custom, { type: 'set-describer', describer: { source: 'profile', profileId: 'p1' } });
+    assert.deepEqual(profile.describer, { source: 'profile', profileId: 'p1', customUrl: 'https://api.example.com/v1', customModel: 'vision' });
+    assert.equal(state.describer.source, 'profile');
+    assert.throws(() => reduceWardrobe(state, { type: 'set-describer', describer: { source: 'cloud' } }), /Неизвестный источник/);
+    assert.throws(() => reduceWardrobe(state, { type: 'set-describer' }), /настройки описания/);
+    assert.throws(() => reduceWardrobe(state, { type: 'set-describer', describer: { customModel: 'm'.repeat(301) } }), /длиннее/);
+});
+
+test('endpoints with credentials, queries or other schemes are refused', () => {
+    assert.equal(normalizeEndpoint(''), '');
+    assert.equal(normalizeEndpoint('http://127.0.0.1:5001/v1/'), 'http://127.0.0.1:5001/v1');
+    assert.equal(normalizeEndpoint('https://api.example.com/'), 'https://api.example.com');
+    for (const url of ['https://user:pass@api.example.com/v1', 'https://api.example.com/v1?key=sk-1', 'https://api.example.com/v1#sk-1']) {
+        assert.throws(() => normalizeEndpoint(url), /поле «Ключ»/, url);
+    }
+    assert.throws(() => normalizeEndpoint('ftp://api.example.com'), /http/);
+    assert.throws(() => normalizeEndpoint('api.example.com/v1'), /полный URL/);
 });
 
 test('mode categories match what the injection can show', () => {

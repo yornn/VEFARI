@@ -1,7 +1,7 @@
 // VEFARI domain model. No browser, storage or SillyTavern dependencies.
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-export const VERSION = '0.6.1';
+export const VERSION = '0.7.0';
 export const SCHEMA_VERSION = 3;
 export const CATEGORIES = Object.freeze({
     full: 'Полный наряд',
@@ -15,9 +15,18 @@ export const TARGETS = Object.freeze(['bot', 'user']);
 export const MAX_IMAGE_REFS = 10;
 const MODES = ['full', 'parts'];
 const SEPARATES = new Set(['top', 'bottom', 'shoes']);
+export const DESCRIBER_SOURCES = Object.freeze(['profile', 'custom']);
+const MAX_DESCRIBER_TEXT = 300;
+
+export function createDescriber() {
+    return { source: 'profile', profileId: '', customUrl: '', customModel: '' };
+}
 
 export function createState() {
-    return { schemaVersion: SCHEMA_VERSION, enabled: true, items: [], assignments: [], generatorImages: true, maxImageRefs: 4 };
+    return {
+        schemaVersion: SCHEMA_VERSION, enabled: true, items: [], assignments: [], generatorImages: true, maxImageRefs: 4,
+        describer: createDescriber(),
+    };
 }
 
 export function validateImageLimit(limit) {
@@ -30,6 +39,41 @@ export function validateImageLimit(limit) {
 export function validateGeneratorImages(enabled) {
     if (typeof enabled !== 'boolean') throw new Error('Укажите, отправлять ли картинки нарядов.');
     return enabled;
+}
+
+/** OpenAI-compatible base URL. Credentials and query strings are refused: a key belongs only in the key field. */
+export function normalizeEndpoint(value) {
+    const text = typeof value === 'string' ? value.trim() : '';
+    if (!text) return '';
+    let url;
+    try { url = new URL(text); }
+    catch { throw new Error('Адрес API — полный URL, например https://api.example.com/v1.'); }
+    if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Адрес API начинается с http:// или https://.');
+    if (url.username || url.password || url.search || url.hash) {
+        throw new Error('Ключ вводится в поле «Ключ», а не в адресе: уберите из URL логин, пароль и всё после «?» или «#».');
+    }
+    // SillyTavern appends /chat/completions itself; a pasted full endpoint would double it.
+    const path = url.pathname.replace(/\/+$/, '').replace(/\/chat\/completions$/i, '').replace(/\/+$/, '');
+    return `${url.origin}${path}`;
+}
+
+function describerText(value, label) {
+    if (typeof value !== 'string') throw new Error(`Некорректное поле «${label}».`);
+    const text = value.trim();
+    if (text.length > MAX_DESCRIBER_TEXT) throw new Error(`Поле «${label}» длиннее ${MAX_DESCRIBER_TEXT} символов.`);
+    return text;
+}
+
+/** Only these four fields are ever stored; anything else, a key included, is dropped. */
+export function validateDescriber(input) {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Повреждены настройки описания по картинке.');
+    if (!DESCRIBER_SOURCES.includes(input.source)) throw new Error('Неизвестный источник описания по картинке.');
+    return {
+        source: input.source,
+        profileId: describerText(input.profileId ?? '', 'Профиль'),
+        customUrl: normalizeEndpoint(describerText(input.customUrl ?? '', 'Адрес API')),
+        customModel: describerText(input.customModel ?? '', 'Модель'),
+    };
 }
 
 function requiredText(value, label) {
@@ -88,6 +132,9 @@ export function reduceWardrobe(state, command) {
             return { ...state, generatorImages: validateGeneratorImages(command.enabled) };
         case 'set-image-limit':
             return { ...state, maxImageRefs: validateImageLimit(command.limit) };
+        case 'set-describer':
+            if (!command.describer || typeof command.describer !== 'object') throw new Error('Укажите настройки описания по картинке.');
+            return { ...state, describer: validateDescriber({ ...state.describer, ...command.describer }) };
         case 'add-item': {
             const item = validateItem(command.item);
             if (state.items.some(entry => entry.id === item.id)) throw new Error('Идентификатор вещи уже существует.');
