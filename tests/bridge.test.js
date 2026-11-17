@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { augmentGeminiBody, formatReport, nameMatches, parseGeneratorRequest, planOutfits } from '../bridge.js';
+import {
+    augmentGeminiBody, changedTargets, createOutfitMemory, formatReport, nameMatches, outfitSignatures, parseGeneratorRequest, planOutfits, sceneText,
+} from '../bridge.js';
 import { freezeDeep } from './fixtures.js';
 
 const generator = { apiType: 'gemini', endpoint: 'https://img.example/proxy', sendRefs: true, always: { bot: false, user: false }, names: { bot: 'Маша, Masha', user: 'Петя' } };
@@ -53,59 +55,118 @@ test('malformed gemini bodies are ignored', () => {
 });
 
 test('plan gates sides like the generator face refs', () => {
-    const worn = snapshot([item('dress', 'full')], [item('suit', 'full')]);
+    const worn = snapshot([item('dress', 'clothes')], [item('suit', 'clothes')]);
     assert.deepEqual(plan({ snapshot: worn }).sides.map(side => side.target), ['bot']);
     assert.deepEqual(plan({ snapshot: worn, generator: { ...generator, always: { bot: false, user: true } } }).sides.map(side => side.target), ['bot', 'user']);
     assert.deepEqual(plan({ snapshot: worn, promptText: 'пейзаж' }).sides, []);
     assert.equal(plan({ snapshot: null }).sides.length, 0);
-    assert.equal(plan({ snapshot: snapshot([], [item('suit', 'full')]), promptText: 'Маша и Петя' }).sides[0].name, 'Петя');
+    assert.equal(plan({ snapshot: snapshot([], [item('suit', 'clothes')]), promptText: 'Маша и Петя' }).sides[0].name, 'Петя');
 });
 
 test('image items follow each side\'s send mode, generator refs and missing files', () => {
-    const worn = snapshot([item('jacket', 'top'), item('jeans', 'bottom'), item('boots', 'shoes', { imagePath: '' })]);
+    const worn = snapshot([item('jacket', 'clothes'), item('braid', 'hair', { imagePath: '' })]);
     const [side] = plan({ snapshot: worn }).sides;
-    assert.deepEqual(ids(side.items), ['jacket', 'jeans', 'boots']);
-    assert.deepEqual(ids(side.imageItems), ['jacket', 'jeans']);
+    assert.deepEqual(ids(side.items), ['jacket', 'braid']);
+    assert.deepEqual(ids(side.imageItems), ['jacket']);
     assert.deepEqual(plan({ snapshot: worn, settings: { ...settings, sendModes: { bot: 'text', user: 'image' } } }).sides[0].imageItems, []);
     assert.deepEqual(plan({ snapshot: worn, generator: { ...generator, sendRefs: false } }).sides[0].imageItems, []);
 });
 
 test('a text-mode side keeps its descriptions and leaves the image budget to the other', () => {
-    const both = snapshot([item('dress', 'full')], [item('suit', 'full'), item('ring', 'accessories')]);
+    const both = snapshot([item('dress', 'clothes')], [item('suit', 'clothes'), item('bun', 'hair')]);
     const userText = plan({ snapshot: both, generator: { ...generator, always: { bot: true, user: true } }, settings: { ...settings, sendModes: { bot: 'image', user: 'text' } } });
-    assert.deepEqual(userText.sides.map(entry => [entry.target, ids(entry.items), ids(entry.imageItems)]), [['bot', ['dress'], ['dress']], ['user', ['suit', 'ring'], []]]);
+    assert.deepEqual(userText.sides.map(entry => [entry.target, ids(entry.items), ids(entry.imageItems)]), [['bot', ['dress'], ['dress']], ['user', ['suit', 'bun'], []]]);
     const botText = plan({ snapshot: both, generator: { ...generator, always: { bot: true, user: true } }, settings: { sendModes: { bot: 'text', user: 'image' }, maxImageRefs: 2 } });
-    assert.deepEqual(botText.sides.map(entry => ids(entry.imageItems)), [[], ['suit', 'ring']]);
+    assert.deepEqual(botText.sides.map(entry => ids(entry.imageItems)), [[], ['suit', 'bun']]);
 });
 
 test('limit is shared with bot first', () => {
-    const worn = snapshot([item('top1', 'top'), item('bottom1', 'bottom'), item('shoes1', 'shoes')], [item('top2', 'top'), item('bottom2', 'bottom')]);
-    const sides = plan({ snapshot: worn, generator: { ...generator, always: { bot: false, user: true } } }).sides;
-    assert.deepEqual(ids(sides[0].imageItems), ['top1', 'bottom1', 'shoes1']);
-    assert.deepEqual(ids(sides[1].imageItems), ['top2']);
-    assert.deepEqual(ids(sides[1].items), ['top2', 'bottom2']);
+    const worn = snapshot([item('dress', 'clothes'), item('braid', 'hair')], [item('suit', 'clothes'), item('bun', 'hair')]);
+    const sides = plan({ snapshot: worn, generator: { ...generator, always: { bot: false, user: true } }, settings: { ...settings, maxImageRefs: 3 } }).sides;
+    assert.deepEqual(ids(sides[0].imageItems), ['dress', 'braid']);
+    assert.deepEqual(ids(sides[1].imageItems), ['suit']);
+    assert.deepEqual(ids(sides[1].items), ['suit', 'bun']);
 });
 
-test('augment inserts labelled images before the prompt and keeps the source intact', () => {
+const NOTE = '[Outfit update: the clothes or hairstyle described above have changed. '
+    + 'Keep the framing, crop, pose and composition exactly as described and show only what is in frame, but dress them like this:';
+
+test('augment puts labelled pictures before the prompt and the update note after the scene', () => {
     const source = freezeDeep(body());
-    const outfit = plan({ snapshot: snapshot([item('jacket', 'top'), item('jeans', 'bottom', { imagePath: '' })]) });
-    const result = augmentGeminiBody(source, outfit, new Map([['jacket', { mimeType: 'image/png', base64: 'JACKET' }]]));
+    const outfit = plan({ snapshot: snapshot([item('jacket', 'clothes'), item('braid', 'hair')]) });
+    const images = new Map([['jacket', { mimeType: 'image/png', base64: 'JACKET' }], ['braid', { mimeType: 'image/png', base64: 'BRAID' }]]);
+    const result = augmentGeminiBody(source, outfit, images);
     assert.deepEqual(result.contents[0].parts, [
         { inlineData: { mimeType: 'image/png', data: 'FACE' } },
-        { text: 'Outfit reference for Маша — TOP: jacket. Dress Маша in exactly this item; it overrides clothing visible in any face or character reference.' },
+        { text: "Outfit reference for Маша: jacket. Use it only for the design, colors and materials of Маша's clothes; ignore the person, pose, framing, crop and background of this picture." },
         { inlineData: { mimeType: 'image/png', data: 'JACKET' } },
-        { text: '[Outfits: follow exactly, they override clothing from any other reference]\n[OUTFIT: Маша is currently wearing: TOP: jacket desc. BOTTOM: jeans desc.]\n\nМаша идёт по улице' },
+        { text: "Hairstyle reference for Маша: braid. Use it only for Маша's hairstyle; ignore the face, pose, framing, crop and background of this picture." },
+        { inlineData: { mimeType: 'image/png', data: 'BRAID' } },
+        { text: `Маша идёт по улице\n\n${NOTE}\nclothes Маша: jacket desc; hairstyle: braid desc]` },
     ]);
     assert.deepEqual(result.generationConfig, source.generationConfig);
     assert.equal(result.contents[0].role, 'user');
     assert.deepEqual(source, body());
 });
 
+test('the old orders and the generator instruction are gone from what VEFARI adds', () => {
+    const instruction = '[CRITICAL: The reference image(s) attached show the EXACT appearance of the character(s). You MUST precisely copy their: face structure, eye color, hair color and style, skin tone, body type, clothing, and all distinctive features. Do not deviate from the reference appearances.]';
+    const outfit = plan({ snapshot: snapshot([item('jacket', 'clothes')]), generator: { ...generator, always: { bot: true, user: true } } });
+    const parts = augmentGeminiBody(body(`${instruction}\n\n[Style: anime] Маша идёт`), outfit, new Map()).contents[0].parts;
+    assert.equal(parts.at(-1).text, `${instruction}\n\n[Style: anime] Маша идёт\n\n${NOTE}\nclothes Маша: jacket desc]`);
+    assert.doesNotMatch(JSON.stringify(parts), /follow exactly|overrides|Dress Маша in exactly/);
+});
+
 test('unloaded image falls back to text', () => {
-    const outfit = plan({ snapshot: snapshot([item('jacket', 'top')]) });
+    const outfit = plan({ snapshot: snapshot([item('jacket', 'clothes')]) });
     const parts = augmentGeminiBody(body(), outfit, new Map()).contents[0].parts;
     assert.equal(parts.filter(part => part.inlineData).length, 1);
-    assert.match(parts.at(-1).text, /TOP: jacket desc\./);
+    assert.match(parts.at(-1).text, /\nclothes Маша: jacket desc]$/);
+});
+
+test('the scene is the prompt without the generator reference instruction', () => {
+    const instruction = '[CRITICAL: The reference image(s) attached show the EXACT appearance. Copy them.]';
+    assert.equal(sceneText(`${instruction}\n\n[Style: anime] Маша идёт`), '[Style: anime] Маша идёт');
+    assert.equal(sceneText('[Style: anime] Маша идёт'), '[Style: anime] Маша идёт');
+    assert.equal(sceneText(undefined), '');
+});
+
+test('signatures are the outfit lines; only participants dressed differently count as changed', () => {
+    const worn = snapshot([item('dress', 'clothes')], [item('bun', 'hair')]);
+    assert.deepEqual(outfitSignatures(worn), { bot: 'clothes Маша: dress desc', user: 'hairstyle Петя: bun desc' });
+    assert.deepEqual(outfitSignatures(null), { bot: '', user: '' });
+    const before = outfitSignatures(worn);
+    assert.deepEqual(changedTargets(before, before), []);
+    const after = outfitSignatures(snapshot([item('gown', 'clothes')], [item('bun', 'hair')]));
+    assert.deepEqual(changedTargets(after, before), ['bot']);
+    // Taking everything off is not news for the picture.
+    assert.deepEqual(changedTargets(outfitSignatures(snapshot([], [item('bun', 'hair')])), before), []);
+    assert.deepEqual(changedTargets(after, { bot: '', user: '' }), ['bot', 'user']);
+});
+
+test('memory keeps the outfit each prompt was written with, from what the writer last saw', () => {
+    const x = { bot: 'clothes Маша: x', user: '' };
+    const y = { bot: 'clothes Маша: y', user: '' };
+    const memory = createOutfitMemory(2);
+    // Nothing seen yet: a new prompt is taken to match the current outfit.
+    assert.deepEqual(memory.baseline('first', y), y);
+    memory.sawWriter(x);
+    assert.deepEqual(memory.baseline('second', y), x);
+    assert.deepEqual(memory.baseline('first', x), y, 'a known prompt keeps its outfit');
+    memory.sawWriter(y);
+    assert.deepEqual(memory.baseline('second', y), x);
+    memory.baseline('third', y);
+    memory.sawWriter(null);
+    assert.deepEqual(memory.baseline('first', x), x, 'the oldest prompt is forgotten first');
+    assert.deepEqual(memory.baseline('third', x), y, 'newer prompts are kept');
+});
+
+test('plan covers only the participants it is asked about', () => {
+    const both = snapshot([item('dress', 'clothes')], [item('suit', 'clothes')]);
+    const always = { ...generator, always: { bot: true, user: true } };
+    assert.deepEqual(plan({ snapshot: both, generator: always, targets: ['user'] }).sides.map(side => side.target), ['user']);
+    assert.deepEqual(plan({ snapshot: both, generator: always, targets: [] }).sides, []);
+    assert.deepEqual(plan({ snapshot: both, generator: always }).sides.map(side => side.target), ['bot', 'user']);
 });
 
 test('empty plan returns body unchanged', () => {
@@ -115,17 +176,11 @@ test('empty plan returns body unchanged', () => {
 
 test('formatReport speaks Russian plurals', () => {
     assert.equal(formatReport(null), 'ещё не было');
-    assert.equal(formatReport({ sides: [{ name: 'Маша', images: ['top', 'bottom'], text: ['shoes'] }, { name: 'Петя', images: ['full'], text: [] }] }),
+    assert.equal(formatReport({ sides: [{ name: 'Маша', images: ['clothes', 'hair'], text: ['clothes'] }, { name: 'Петя', images: ['clothes'], text: [] }] }),
         'Маша — 2 картинки, 1 текстом; Петя — 1 картинка');
     assert.equal(formatReport({ sides: [{ name: 'Маша', images: ['a', 'b', 'c', 'd', 'e'], text: [] }] }), 'Маша — 5 картинок');
-    assert.equal(formatReport({ sides: [{ name: 'Петя', images: [], text: ['top', 'bottom'] }] }), 'Петя — 2 текстом');
+    assert.equal(formatReport({ sides: [{ name: 'Петя', images: [], text: ['clothes', 'hair'] }] }), 'Петя — 2 текстом');
     assert.equal(formatReport({ sides: [{ name: 'Маша', images: Array(11).fill('x'), text: [] }] }), 'Маша — 11 картинок');
-});
-
-test('outfit block follows the generator reference instruction', () => {
-    const instruction = '[CRITICAL: The reference image(s) attached show the EXACT appearance of the character(s). You MUST precisely copy their: face structure, eye color, hair color and style, skin tone, body type, clothing, and all distinctive features. Do not deviate from the reference appearances.]';
-    const outfit = plan({ snapshot: snapshot([item('jacket', 'top')]) });
-    const text = augmentGeminiBody(body(`${instruction}\n\n[Style: anime] Маша идёт`), outfit, new Map()).contents[0].parts.at(-1).text;
-    assert.equal(text, `${instruction}\n\n[Outfits: follow exactly, they override clothing from any other reference]\n`
-        + '[OUTFIT: Маша is currently wearing: TOP: jacket desc.]\n\n[Style: anime] Маша идёт');
+    assert.equal(formatReport({ sides: [], changed: false }), 'ничего: наряды не менялись, промпт уже с ними');
+    assert.equal(formatReport({ sides: [], changed: true }), 'ничего: тех, кто переоделся, нет в кадре');
 });

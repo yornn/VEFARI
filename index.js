@@ -3,7 +3,7 @@
  * UI for the VEFARI command-based wardrobe controller.
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-import { CATEGORIES, MAX_IMAGE_REFS, VERSION, categoriesForMode, validateItem } from './wardrobe.js';
+import { CATEGORIES, MAX_IMAGE_REFS, MAX_INJECT_DEPTH, VERSION, validateItem } from './wardrobe.js';
 import { chatProfiles, listCustomModels, requestDescription } from './describe.js';
 import { createKeyStore } from './keystore.js';
 import { createController } from './integration.js';
@@ -80,6 +80,7 @@ function render() {
     }
     field('enabled').checked = settings.enabled;
     field('image_limit').value = String(settings.maxImageRefs);
+    field('inject_depth').value = String(settings.injectDepth);
     field('bridge_report').textContent = formatReport(report);
     const sendMode = settings.sendModes[target];
     field(`send_${sendMode}`).checked = true;
@@ -90,8 +91,6 @@ function render() {
     );
     renderDescriber(settings.describer);
     field('context').hidden = Boolean(character);
-    field(`mode_${selection.mode}`).checked = true;
-    field('mode').disabled = !character;
     field('slots').hidden = !character;
     field('clear').hidden = !character;
     field('disabled_notice').hidden = settings.enabled;
@@ -101,7 +100,7 @@ function render() {
         tab.tabIndex = selected ? 0 : -1;
     }
     for (const panel of ['owner_panel', 'collection_panel']) field(panel).setAttribute('aria-labelledby', `vefari_tab_${target}`);
-    field('slots').replaceChildren(...categoriesForMode(selection.mode).map(category =>
+    field('slots').replaceChildren(...Object.keys(CATEGORIES).map(category =>
         createSlot(category, active.find(item => item.category === category) ?? null, { active: filter === category })));
 
     const list = field('items');
@@ -598,6 +597,27 @@ async function handleItemAction(action, id) {
     }
 }
 
+/** A number field with minus and plus buttons; a rejected value is replaced by the saved one. */
+function bindStepper(input, [down, up], { min, max, current, save }) {
+    field(input).addEventListener('change', () => {
+        // An empty or unreadable field is not a zero: it is refused like any other bad value.
+        const text = field(input).value.trim();
+        void runAction(() => save(text ? Number(text) : Number.NaN)).finally(refreshView);
+    });
+    for (const [id, step] of [[down, -1], [up, 1]]) {
+        field(id).addEventListener('click', () => {
+            const value = current();
+            const next = Math.min(max, Math.max(min, value + step));
+            if (next === value) return;
+            // The busy lock blurs the button; give focus back so the stepper can be pressed again.
+            void runAction(() => save(next)).finally(() => {
+                refreshView();
+                if (settingsOpen) field(id).focus({ preventScroll: true });
+            });
+        });
+    }
+}
+
 async function init() {
     if (document.getElementById('vefari_menu')) return;
     const responses = await Promise.all(['./wardrobe.html', './wardrobe.css'].map(path => fetch(new URL(path, import.meta.url))));
@@ -627,22 +647,16 @@ async function init() {
     field('send').addEventListener('change', event => applySetting(() => {
         controller.dispatch({ type: 'set-send-mode', target, mode: event.target.value });
     }));
-    // A rejected limit leaves the saved value; re-render so the field shows it again.
-    field('image_limit').addEventListener('change', () => runAction(() => {
-        controller.dispatch({ type: 'set-image-limit', limit: Number(field('image_limit').value) });
-    }).finally(refreshView));
-    for (const [id, step] of [['limit_down', -1], ['limit_up', 1]]) {
-        field(id).addEventListener('click', () => {
-            const current = controller.view().state.maxImageRefs;
-            const limit = Math.min(MAX_IMAGE_REFS, Math.max(1, current + step));
-            if (limit === current) return;
-            // The busy lock blurs the button; give focus back so the stepper can be pressed again.
-            void runAction(() => controller.dispatch({ type: 'set-image-limit', limit })).finally(() => {
-                refreshView();
-                if (settingsOpen) field(id).focus({ preventScroll: true });
-            });
-        });
-    }
+    bindStepper('image_limit', ['limit_down', 'limit_up'], {
+        min: 1, max: MAX_IMAGE_REFS,
+        current: () => controller.view().state.maxImageRefs,
+        save: limit => controller.dispatch({ type: 'set-image-limit', limit }),
+    });
+    bindStepper('inject_depth', ['depth_down', 'depth_up'], {
+        min: 0, max: MAX_INJECT_DEPTH,
+        current: () => controller.view().state.injectDepth,
+        save: depth => controller.dispatch({ type: 'set-inject-depth', depth }),
+    });
     for (const tab of root.querySelectorAll('[role="tab"]')) {
         tab.addEventListener('click', () => switchTarget(tab.dataset.target));
         tab.addEventListener('keydown', event => {
@@ -709,9 +723,6 @@ async function init() {
     field('describer_check').addEventListener('click', () => { void runAction(checkEndpoint); });
     field('export_item').addEventListener('click', () => { void runAction(exportItem); });
     field('export_all').addEventListener('click', () => { void runAction(exportAll); });
-    field('mode').addEventListener('change', event => runAction(() => {
-        ownerCommand('set-mode', { mode: event.target.value });
-    }));
     field('enable').addEventListener('click', () => runAction(() => {
         controller.dispatch({ type: 'set-enabled', enabled: true });
     }));

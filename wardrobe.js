@@ -1,20 +1,19 @@
 // VEFARI domain model. No browser, storage or SillyTavern dependencies.
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-export const VERSION = '0.8.0';
-export const SCHEMA_VERSION = 3;
+export const VERSION = '0.9.0';
+export const SCHEMA_VERSION = 4;
+// Everything a participant wears is one description; the hairstyle is the other.
 export const CATEGORIES = Object.freeze({
-    full: 'Полный наряд',
-    top: 'Верх',
-    bottom: 'Низ',
-    shoes: 'Обувь',
-    accessories: 'Аксессуары',
+    clothes: 'Одежда',
     hair: 'Причёска',
 });
 export const TARGETS = Object.freeze(['bot', 'user']);
 export const MAX_IMAGE_REFS = 10;
-const MODES = ['full', 'parts'];
-const SEPARATES = new Set(['top', 'bottom', 'shoes']);
+// Chat messages that come after the outfit lines. At 0 they are the last thing the model reads
+// and it narrates clothing in every reply; a few messages up they stay a quiet reminder.
+export const DEFAULT_INJECT_DEPTH = 4;
+export const MAX_INJECT_DEPTH = 100;
 export const DESCRIBER_SOURCES = Object.freeze(['profile', 'custom']);
 // What a participant's worn outfit sends to the image generator: descriptions only, or pictures too.
 export const SEND_MODES = Object.freeze(['image', 'text']);
@@ -31,8 +30,15 @@ export function createSendModes() {
 export function createState() {
     return {
         schemaVersion: SCHEMA_VERSION, enabled: true, items: [], assignments: [], sendModes: createSendModes(), maxImageRefs: 4,
-        describer: createDescriber(),
+        injectDepth: DEFAULT_INJECT_DEPTH, describer: createDescriber(),
     };
+}
+
+export function validateInjectDepth(depth) {
+    if (!Number.isInteger(depth) || depth < 0 || depth > MAX_INJECT_DEPTH) {
+        throw new Error(`Глубина вставки — целое число от 0 до ${MAX_INJECT_DEPTH}.`);
+    }
+    return depth;
 }
 
 export function validateImageLimit(limit) {
@@ -104,10 +110,6 @@ export function validateOwner(characterKey, target) {
     if (!TARGETS.includes(target)) throw new Error('Неизвестный владелец наряда.');
 }
 
-export function validateMode(mode) {
-    if (!MODES.includes(mode)) throw new Error('Неизвестный режим гардероба.');
-}
-
 export function validateItem(input) {
     if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Некорректная запись вещи.');
     const id = requiredText(input.id, 'Идентификатор');
@@ -151,6 +153,8 @@ export function reduceWardrobe(state, command) {
             return { ...state, sendModes: { ...state.sendModes, [command.target]: validateSendMode(command.mode) } };
         case 'set-image-limit':
             return { ...state, maxImageRefs: validateImageLimit(command.limit) };
+        case 'set-inject-depth':
+            return { ...state, injectDepth: validateInjectDepth(command.depth) };
         case 'set-describer':
             if (!command.describer || typeof command.describer !== 'object') throw new Error('Укажите настройки описания по картинке.');
             return { ...state, describer: validateDescriber({ ...state.describer, ...command.describer }) };
@@ -180,7 +184,6 @@ export function reduceWardrobe(state, command) {
         case 'wear':
         case 'remove-category':
         case 'clear-owner':
-        case 'set-mode':
             return changeSelection(state, command);
         default:
             throw new Error('Неизвестная команда гардероба.');
@@ -192,12 +195,8 @@ function changeSelection(state, command) {
     validateOwner(characterKey, target);
     const previous = assignmentFor(state, characterKey, target);
     const next = previous ? { ...previous, itemIds: [...previous.itemIds] }
-        : { characterKey, target, mode: 'full', itemIds: [] };
+        : { characterKey, target, itemIds: [] };
     switch (command.type) {
-        case 'set-mode':
-            validateMode(command.mode);
-            next.mode = command.mode;
-            break;
         case 'clear-owner':
             next.itemIds = [];
             break;
@@ -212,35 +211,20 @@ function changeSelection(state, command) {
             // Selection references inventory IDs, not another copy of garment data.
             next.itemIds = next.itemIds.filter(id => state.items.find(entry => entry.id === id)?.category !== item.category);
             next.itemIds.push(item.id);
-            if (item.category === 'full') next.mode = 'full';
-            else if (SEPARATES.has(item.category)) next.mode = 'parts';
             break;
         }
     }
     return replaceAssignment(state, next);
 }
 
-// Full outfits hide separates and vice versa; slots and the injection share this rule.
-function visibleInMode(category, mode) {
-    return mode === 'parts' ? category !== 'full' : !SEPARATES.has(category);
-}
-
-export function categoriesForMode(mode) {
-    validateMode(mode);
-    return Object.keys(CATEGORIES).filter(category => visibleInMode(category, mode));
-}
-
 /** Category order is presentation, not the storage layout. */
 export function selectWardrobe(state, characterKey, target) {
     if (!TARGETS.includes(target)) throw new Error('Неизвестный владелец наряда.');
-    const assignment = assignmentFor(state, characterKey, target);
-    const mode = assignment?.mode || 'full';
-    const selected = new Set(assignment?.itemIds || []);
-    const items = state.items.filter(item => selected.has(item.id) && item.audiences.includes(target)
-        && visibleInMode(item.category, mode));
+    const selected = new Set(assignmentFor(state, characterKey, target)?.itemIds || []);
+    const items = state.items.filter(item => selected.has(item.id) && item.audiences.includes(target));
     const order = Object.keys(CATEGORIES);
     items.sort((left, right) => order.indexOf(left.category) - order.indexOf(right.category));
-    return { mode, items: items.map(item => ({ ...item, audiences: [...item.audiences] })) };
+    return { items: items.map(item => ({ ...item, audiences: [...item.audiences] })) };
 }
 
 export function selectCollection(state, target) {

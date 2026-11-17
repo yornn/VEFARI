@@ -39,11 +39,7 @@ export const ICONS = Object.freeze({
     picture: ['M4.5 5h15v14h-15Z', 'M5.2 15.8 9.5 11.5l3.5 3.5 2.5-2.5 3.3 3.3', 'M15.5 7.2l1.4 1.4-1.4 1.4-1.4-1.4Z'],
     algiz: ['M12 4v16M12 11 6.5 5M12 11l5.5-6'],
     othala: ['M12 3l5.5 5.5L7 19M12 3 6.5 8.5 17 19'],
-    full: ['M9.5 3 7 5v5L5 21h14l-2-11V5l-2.5-2L12 5.5Z', 'M7 10h10'],
-    top: ['M8.5 4 4 6.5 2.5 12l3 .5 1-3V19h11V9.5l1 3 3-.5L20 6.5 15.5 4 12 7Z'],
-    bottom: ['M6 4h12l1 16.5h-5L12 10l-2 10.5H5Z', 'M6 7h12'],
-    shoes: ['M8.5 3.5h5v9l6 2.5 1 3v2.5h-14L7.5 13Z', 'M8.5 6.5h5', 'M6.5 18h14'],
-    accessories: ['M12 3.5l3 3-3 3-3-3Z', 'M10 8.6A5.8 5.8 0 1 0 14 8.6'],
+    clothes: ['M9.5 3 7 5v5L5 21h14l-2-11V5l-2.5-2L12 5.5Z', 'M7 10h10'],
     hair: ['M12 3 15.5 6.5 15 17 12 20 9 17 8.5 6.5Z', 'M9 9.5l3 2 3-2M9 13.5l3 2 3-2', 'M12 20v2.5'],
 });
 
@@ -81,7 +77,7 @@ function appendPath(parent, d, attributes = {}) {
 
 export function createIcon(name, className = 'vefari_icon') {
     const svg = lineSvg('0 0 24 24', className, '1.5');
-    for (const d of ICONS[name] || ICONS.full) appendPath(svg, d);
+    for (const d of ICONS[name] || ICONS.clothes) appendPath(svg, d);
     return svg;
 }
 

@@ -7,8 +7,26 @@ import { freezeDeep, garment, inventory, owner, wear } from './fixtures.js';
 function prototype() {
     return {
         enabled: false,
-        items: [garment('dress'), garment('shirt', 'top'), { ...garment('ring', 'accessories'), imagePath: '/user/images/vefari_refs/ring.png' }],
+        items: [garment('dress', 'full'), garment('shirt', 'top'), { ...garment('ring', 'accessories'), imagePath: '/user/images/vefari_refs/ring.png' }],
         activeOutfits: { [owner.characterKey]: { botMode: 'parts', userMode: 'full', bot: { full: 'dress', top: 'shirt', accessories: 'ring' }, user: { full: 'dress' } } },
+    };
+}
+
+// A 0.8 wardrobe: six categories, Char wearing parts with a hidden full outfit, User wearing a full outfit.
+function schema3() {
+    const items = [
+        garment('dress', 'full'), garment('shirt', 'top'), garment('skirt', 'bottom'), garment('boots', 'shoes'),
+        { ...garment('ring', 'accessories'), imagePath: '/user/images/vefari_refs/ring.png' }, garment('braid', 'hair'),
+        { ...garment('cloak', 'full'), audiences: ['user'] },
+    ];
+    return {
+        schemaVersion: 3, enabled: true, items, sendModes: { bot: 'image', user: 'text' }, maxImageRefs: 6,
+        describer: { source: 'profile', profileId: 'p1', customUrl: '', customModel: '' },
+        assignments: [
+            { characterKey: owner.characterKey, target: 'bot', mode: 'parts', itemIds: ['dress', 'boots', 'ring', 'shirt', 'braid'] },
+            { characterKey: owner.characterKey, target: 'user', mode: 'full', itemIds: ['ring', 'cloak', 'shirt'] },
+            { characterKey: 'character:bob.png', target: 'bot', mode: 'full', itemIds: ['missing', 'cloak', 'skirt'] },
+        ],
     };
 }
 
@@ -18,15 +36,47 @@ test('new installation starts empty without mutating host settings', () => {
     assert.deepEqual(context.extensionSettings, {});
 });
 
-test('prototype migration preserves inventory, disabled state, modes and hidden choices', () => {
+test('prototype migration keeps inventory and disabled state, and the piece its mode showed first', () => {
     const raw = freezeDeep(prototype());
     const state = decodeSettings(raw);
-    assert.equal(state.schemaVersion, 3);
+    assert.equal(state.schemaVersion, 4);
     assert.equal(state.enabled, false);
-    assert.deepEqual(state.items, raw.items);
-    assert.deepEqual(selectWardrobe(state, owner.characterKey, 'bot').items.map(item => item.id), ['shirt', 'ring']);
-    assert.deepEqual(state.assignments[0].itemIds, ['dress', 'shirt', 'ring']);
+    assert.deepEqual(state.items, raw.items.map(item => ({ ...item, category: 'clothes' })));
+    assert.deepEqual(selectWardrobe(state, owner.characterKey, 'bot').items.map(item => item.id), ['shirt']);
+    assert.deepEqual(state.assignments[0].itemIds, ['shirt']);
     assert.equal(selectWardrobe(state, owner.characterKey, 'user').items[0].id, 'dress');
+});
+
+test('schema 3 collapses six categories into clothes and hair and keeps one piece of clothing per owner', () => {
+    const raw = freezeDeep(schema3());
+    const state = decodeSettings(raw);
+    assert.equal(state.schemaVersion, 4);
+    assert.deepEqual(state.items.map(item => [item.id, item.category]), [
+        ['dress', 'clothes'], ['shirt', 'clothes'], ['skirt', 'clothes'], ['boots', 'clothes'], ['ring', 'clothes'], ['braid', 'hair'], ['cloak', 'clothes'],
+    ]);
+    const worn = (characterKey, target) => selectWardrobe(state, characterKey, target).items.map(item => item.id);
+    // Parts mode showed the shirt first; the dress was hidden under it.
+    assert.deepEqual(worn(owner.characterKey, 'bot'), ['shirt', 'braid']);
+    // Full mode showed the cloak before the accessories; the shirt was hidden.
+    assert.deepEqual(worn(owner.characterKey, 'user'), ['cloak']);
+    // A missing piece and one from the other collection do not take the place.
+    assert.deepEqual(worn('character:bob.png', 'bot'), ['skirt']);
+    assert.ok(state.assignments.every(entry => !Object.hasOwn(entry, 'mode')));
+    assert.deepEqual([state.sendModes, state.maxImageRefs, state.describer.profileId], [{ bot: 'image', user: 'text' }, 6, 'p1']);
+});
+
+test('schema 3 moves from depth 0 to the default depth and is backed up once on the first save', () => {
+    const raw = schema3();
+    const context = { extensionSettings: { vefari: raw }, saveSettingsDebounced() {} };
+    const upgraded = readSettings(context);
+    assert.equal(upgraded.injectDepth, 4);
+    writeSettings(context, upgraded);
+    assert.deepEqual(context.extensionSettings.vefari_v3_backup, raw);
+    assert.notEqual(context.extensionSettings.vefari_v3_backup, raw);
+    writeSettings(context, createState());
+    assert.deepEqual(context.extensionSettings.vefari_v3_backup, raw);
+    assert.ok(retainedImages(context).some(item => item.imagePath.endsWith('ring.png')));
+    assert.equal(Object.hasOwn(context.extensionSettings, 'vefari_v2_backup'), false);
 });
 
 test('first save after migration creates exactly one backup and retains its images', () => {
@@ -61,6 +111,11 @@ test('invalid or future schemas fail without overwriting saved data', () => {
         { items: 'bad' }, { items: [null] },
         { items: [garment('coat'), garment('coat')] },
         { items: [], activeOutfits: [] },
+        { schemaVersion: 3, enabled: true, items: [], assignments: [{ characterKey: 'character:a.png', target: 'bot', mode: 'cloak', itemIds: [] }] },
+        { schemaVersion: 3, enabled: true, items: [garment('hat', 'headwear')], assignments: [] },
+        { schemaVersion: 4, enabled: true, items: [garment('top', 'top')], assignments: [] },
+        { ...createState(), injectDepth: -1 },
+        { ...createState(), injectDepth: '4' },
     ];
     for (const raw of badStates) {
         const context = { extensionSettings: { vefari: raw } };
@@ -82,19 +137,23 @@ test('dangling IDs are ignored; duplicate owner or clothing category is rejected
 
 test('schema 2 migration makes unclassified items available in both collections with backup', () => {
     const state = wear(inventory(garment('coat')), 'coat');
-    const raw = { ...state, schemaVersion: 2, items: state.items.map(({ audiences, ...item }) => item) };
+    const raw = {
+        ...state, schemaVersion: 2, items: state.items.map(({ audiences, ...item }) => ({ ...item, category: 'full' })),
+        assignments: state.assignments.map(entry => ({ ...entry, mode: 'full' })),
+    };
     const context = { extensionSettings: { vefari: freezeDeep(raw) }, saveSettingsDebounced() {} };
     const upgraded = readSettings(context);
-    assert.equal(upgraded.schemaVersion, 3);
+    assert.equal(upgraded.schemaVersion, 4);
     assert.deepEqual(upgraded.items[0].audiences, ['bot', 'user']);
-    assert.deepEqual(upgraded.assignments, raw.assignments);
+    assert.equal(upgraded.items[0].category, 'clothes');
+    assert.deepEqual(upgraded.assignments, state.assignments);
     writeSettings(context, upgraded);
     assert.deepEqual(context.extensionSettings.vefari_v2_backup, raw);
     writeSettings(context, createState());
     assert.deepEqual(context.extensionSettings.vefari_v2_backup, raw);
 });
 
-test('schema 3 validates collection membership and does not revive mismatched assignments', () => {
+test('the current schema validates collection membership and does not revive mismatched assignments', () => {
     const state = wear(inventory(garment('coat')), 'coat');
     state.items[0].audiences = ['user'];
     assert.equal(decodeSettings(state).assignments[0].itemIds.length, 0);
@@ -113,6 +172,14 @@ test('generator settings default when absent and are validated when present', ()
     assert.deepEqual(decodeSettings({ ...legacy, sendModes: { bot: 'text', user: 'image' } }).sendModes, { bot: 'text', user: 'image' });
     assert.throws(() => decodeSettings({ ...legacy, sendModes: { bot: 'text' } }));
     assert.throws(() => decodeSettings({ ...legacy, sendModes: 'text' }));
+});
+
+test('injection depth defaults when absent and keeps a saved value', () => {
+    const saved = JSON.parse(JSON.stringify(inventory(garment('coat'))));
+    delete saved.injectDepth;
+    assert.equal(decodeSettings(saved).injectDepth, 4);
+    for (const depth of [0, 12, 100]) assert.equal(decodeSettings({ ...saved, injectDepth: depth }).injectDepth, depth);
+    assert.throws(() => decodeSettings({ ...saved, injectDepth: 101 }), /от 0 до 100/);
 });
 
 test('the single generator switch of 0.7 becomes the same mode for both, and item flags are dropped', () => {

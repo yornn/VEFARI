@@ -191,7 +191,7 @@
             check(innerWidth >= 720 ? armoryRect.right <= collectionRect.left + 1 : armoryRect.bottom <= collectionRect.top + 1, 'Armory sits beside the collection on desktop and above it on narrow screens');
             check(wardrobe().querySelector('.vefari_brand svg.vefari_emblem') && wardrobe().querySelector('.vefari_brand svg.vefari_runes'), 'Header shows the fibula and the rune line');
             check(field('items').firstElementChild === field('add') && field('add').nextElementSibling === field('import') && field('import').type === 'button' && !field('add').classList.contains('vefari_card'), 'Add and import tiles open the collection');
-            check(field('filter').querySelectorAll('.vefari_chip[data-filter]').length === 7, 'Category filter is a row of chips');
+            check(field('filter').querySelectorAll('.vefari_chip[data-filter]').length === 3, 'Category filter is a row of chips: all, clothes and hair');
             field('settings_toggle').click();
             check(!field('settings_panel').hidden && field('collection_panel').hidden && field('editor_panel').hidden, 'Top-right settings icon opens only settings');
             check(!field('settings_panel').querySelector('#vefari_form'), 'Item creation form is not part of settings');
@@ -219,24 +219,24 @@
             await click('equip', coat.id);
             const wornCoat = [...field('items').querySelectorAll('.vefari_card')].find(card => card.textContent.includes(coat.name));
             check(wornCoat.dataset.worn === 'true' && wornCoat.getAttribute('aria-pressed') === 'true' && !wornCoat.querySelector('button[data-action="equip"]') && !wornCoat.textContent.includes('Надето') && !wornCoat.querySelector('.vefari_worn_mark'), 'Active item is indicated only by card highlighting, without a check mark');
-            check(prompt() === '[OUTFIT: Player is currently wearing: FULL: A blue wool coat.]', 'User item is injected as a compact bracketed block under the current persona name');
+            check(prompt() === 'clothes Player: A blue wool coat', 'User item is injected as one plain line under the current persona name');
             const slotFor = category => field('slots').querySelector(`.vefari_slot[data-filter="${category}"]`);
-            check([...field('slots').querySelectorAll('.vefari_slot')].map(slot => slot.dataset.filter).join() === 'full,accessories,hair', 'Full mode shows the full, accessories and hair slots');
-            check(slotFor('full').textContent.includes(coat.name) && slotFor('accessories').textContent.includes('пусто'), 'Worn item appears in its slot');
-            await click('unequip', 'full');
-            check(prompt() === '' && slotFor('full').textContent.includes('пусто'), 'Slot cross takes the item off');
+            check([...field('slots').querySelectorAll('.vefari_slot')].map(slot => slot.dataset.filter).join() === 'clothes,hair' && !field('mode'), 'The armory has two slots, clothes and hair, and no outfit mode switch');
+            check(slotFor('clothes').textContent.includes(coat.name) && slotFor('hair').textContent.includes('пусто'), 'Worn item appears in its slot');
+            await click('unequip', 'clothes');
+            check(prompt() === '' && slotFor('clothes').textContent.includes('пусто'), 'Slot cross takes the item off');
             await click('equip', coat.id);
-            slotFor('accessories').click();
-            check(!field('items').querySelector('.vefari_card') && slotFor('accessories').getAttribute('aria-pressed') === 'true', 'Clicking a slot filters the collection by its category');
-            slotFor('full').click();
+            slotFor('hair').click();
+            check(!field('items').querySelector('.vefari_card') && slotFor('hair').getAttribute('aria-pressed') === 'true', 'Clicking a slot filters the collection by its category');
+            slotFor('clothes').click();
             check(field('items').querySelector('.vefari_card'), 'Another slot switches the filter');
             const chip = value => field('filter').querySelector(`.vefari_chip[data-filter="${value}"]`);
             chip('all').click();
-            chip('shoes').click();
+            chip('hair').click();
             check(field('items').querySelector('.vefari_empty')?.textContent.includes('В этой категории пусто'), 'Empty category explains itself');
             field('add').click();
             await idle();
-            check(!field('editor_panel').hidden && field('category').value === 'shoes', 'Adding from a filtered category preselects it');
+            check(!field('editor_panel').hidden && field('category').value === 'hair' && field('category').options.length === 2, 'Adding from a filtered category preselects it; the editor offers only clothes and hair');
             field('cancel').click();
             chip('all').click();
             check(chip('all').getAttribute('aria-pressed') === 'true' && field('items').querySelector('.vefari_card'), 'The all chip resets the filter');
@@ -254,7 +254,7 @@
             await save();
             field('tab_bot').click();
             await click('equip', coat.id);
-            check(prompt() === '[OUTFIT: Alice is currently wearing: FULL: A green wool coat.]\n[OUTFIT: Player is currently wearing: FULL: A green wool coat.]', 'Shared item produces separate bracketed blocks for both participants');
+            check(prompt() === 'clothes Alice: A green wool coat\nclothes Player: A green wool coat', 'Shared item produces one line per participant, Char first');
             const sendRect = field('send').getBoundingClientRect(), armoryBox = field('armory').getBoundingClientRect();
             check(field('send_image').checked && field('send_caption').textContent === 'текст и картинки' && sendRect.left - armoryBox.left < 24 && (innerWidth < 720 || armoryBox.bottom - sendRect.bottom < 24), 'Char armory ends with its generator switch at the bottom left, text and images by default');
             check(field('send_text').closest('label').querySelector('svg') && field('send_image').closest('label').querySelector('svg') && field('send_text').getAttribute('aria-label') === 'Только текст' && field('send_image').getAttribute('aria-label') === 'Текст и картинка', 'The switch is a labelled pair of T and picture icons');
@@ -285,11 +285,35 @@
             change('image_limit', '2');
             await idle();
             check(context.extensionSettings.vefari.maxImageRefs === 2, 'Image limit is saved');
+            const depth = () => prompts.get('vefari_outfit')?.[2];
+            check(field('inject_depth').value === '4' && depth() === 4, 'Outfit lines go four messages up the chat by default');
+            field('depth_down').click(); await idle();
+            check(context.extensionSettings.vefari.injectDepth === 3 && field('inject_depth').value === '3' && depth() === 3, 'Stepper moves the outfit lines closer to the reply');
+            field('depth_up').click(); await idle();
+            check(context.extensionSettings.vefari.injectDepth === 4 && wardrobe().activeElement === field('depth_up'), 'Stepper moves them back and keeps focus on its button');
+            change('inject_depth', '0');
+            await idle();
+            check(context.extensionSettings.vefari.injectDepth === 0 && depth() === 0, 'Depth 0 can be typed in');
+            for (const bad of ['', '101', '2.5']) {
+                change('inject_depth', bad);
+                await idle();
+                check(field('status').dataset.error === 'true' && field('inject_depth').value === '0' && context.extensionSettings.vefari.injectDepth === 0, `Depth «${bad}» is rejected and the field restored`);
+            }
+            change('inject_depth', '6');
+            await idle();
+            check(context.extensionSettings.vefari.injectDepth === 6 && depth() === 6, 'A typed depth is saved and used at once');
             context.extensionSettings.inline_image_gen = { apiType: 'gemini', endpoint: `${location.origin}/fake-generator`, geminiSendRefs: true, charRef: { name: '' }, userRef: { name: '' } };
-            await fetch(`${location.origin}/fake-generator/v1beta/models/m:generateContent`, {
+            const drawRain = () => fetch(`${location.origin}/fake-generator/v1beta/models/m:generateContent`, {
                 method: 'POST', body: JSON.stringify({ contents: [{ parts: [{ text: 'Alice in the rain' }] }], generationConfig: { responseModalities: ['IMAGE'] } }),
             });
-            check(field('bridge_report').textContent === 'Alice — 1 текстом', 'A real generator request through window.fetch updates the bridge report');
+            await drawRain();
+            check(field('bridge_report').textContent === 'ничего: наряды не менялись, промпт уже с ними', 'A generator request whose prompt already knows the outfit goes out untouched and the report says so');
+            const storedCoat = () => context.extensionSettings.vefari.items.find(item => item.id === coat.id);
+            storedCoat().description = 'A red wool coat';
+            await drawRain();
+            check(field('bridge_report').textContent === 'Alice — 1 текстом', 'After a change of outfit the same picture request gets the new outfit');
+            storedCoat().description = 'A green wool coat';
+            check(field('settings_panel').querySelector('code.vefari_macro')?.textContent === '{{outfits}}', 'Generator settings show the macro to paste into OOC');
             delete context.extensionSettings.inline_image_gen;
             field('enabled').checked = false;
             field('enabled').dispatchEvent(new Event('change'));
@@ -307,17 +331,12 @@
             check(field('tab_bot_name').textContent === 'Bob', 'Char tab name updates with the selected card');
             check(!prompt() && field('items').querySelector('.vefari_card'), 'Collection stays global when switching characters; equipped state does not leak');
             await click('equip', coat.id);
-            check(prompt() === '[OUTFIT: Bob is currently wearing: FULL: A green wool coat.]', 'The same Char collection works for another bot');
-            field('mode_parts').click();
-            await idle();
-            check(prompt() === '' && [...field('slots').querySelectorAll('.vefari_slot')].length === 5, 'Mode switch in the armory hides the full outfit and shows five part slots');
-            field('mode_full').click();
-            await idle();
+            check(prompt() === 'clothes Bob: A green wool coat', 'The same Char collection works for another bot');
             context.characterId = 0;
             emit('chat');
             context.groupId = 'group-1';
             emit('chat');
-            check(!prompt() && field('mode').disabled, 'Unsupported groups clear injection but keep collection accessible');
+            check(!prompt() && field('slots').hidden, 'Unsupported groups clear injection but keep collection accessible');
             context.groupId = null;
             emit('chat');
             field('add').click();
@@ -351,12 +370,11 @@
             input('name', 'Boots');
             field('image').dispatchEvent(new Event('change', { bubbles: true }));
             check(field('name').value === 'Boots', 'Choosing an image never overwrites a typed name');
-            change('category', 'shoes');
             input('description', 'Black leather boots');
             await save();
             const boots = context.extensionSettings.vefari.items.find(item => item.name === 'Boots');
             await click('equip', boots.id);
-            check(field('mode_parts').checked && boots.audiences.join() === 'bot', 'Char-specific image item automatically selects parts mode');
+            check(boots.audiences.join() === 'bot' && boots.category === 'clothes' && prompt().startsWith('clothes Alice: Black leather boots\n'), 'A new Char item replaces the clothing Char wore');
             const preview = field('items').querySelector('.vefari_card img').getBoundingClientRect();
             check(preview.height >= 150 && preview.width < preview.height, 'Image preview is larger and vertically oriented');
             const references = await window.vefari.getImageReferences('bot');
@@ -385,12 +403,12 @@
             field('describe').click();
             await wait(() => field('describe').dataset.busy === 'false' && field('status').textContent.includes('Описание готово'));
             const profileCall = modelCalls.at(-1);
-            check(profileCall.route === 'profile' && profileCall.profileId === 'vision' && profileCall.messages[0].content[0].image_url.url.startsWith('data:image/png;base64,') && profileCall.messages[0].content[1].text.includes('describe only the footwear'), 'Feather sends the saved picture with the shoes prompt through the profile');
+            check(profileCall.route === 'profile' && profileCall.profileId === 'vision' && profileCall.messages[0].content[0].image_url.url.startsWith('data:image/png;base64,') && profileCall.messages[0].content[1].text.includes('describe the complete outfit'), 'Feather sends the saved picture with the clothes prompt through the profile');
             check(field('description').value === 'oxblood leather knee-high boots with brass buckles' && !field('description').readOnly, 'The cleaned description fills the field and the field is editable again');
             modelReply = { content: 'NO_OUTFIT' };
             field('describe').click();
             await wait(() => field('describe').dataset.busy === 'false' && field('status').dataset.error === 'true');
-            check(field('status').textContent.includes('Обувь') && field('description').value.startsWith('oxblood'), 'NO_OUTFIT reports the empty category and keeps the text');
+            check(field('status').textContent.includes('Одежда') && field('description').value.startsWith('oxblood'), 'NO_OUTFIT reports the empty category and keeps the text');
             modelReply = 'hang';
             field('describe').click();
             await wait(() => field('describe').dataset.busy === 'true');
@@ -481,10 +499,10 @@
             await idle();
             check(!field('editor_panel').hidden && field('description').value === 'Льняная рубаха с вышивкой на плечах.', 'Import pulls the embedded outfit text out of the PNG');
             check(field('name').value === 'рубаха' && !field('export_item').hidden, 'Import pre-fills the name from the file and allows re-export');
-            change('category', 'top');
+            check(field('category').value === 'clothes', 'Imported outfit starts as clothing');
             await save();
             const shirt = context.extensionSettings.vefari.items.find(item => item.name === 'рубаха');
-            check(shirt?.imagePath && shirt.category === 'top' && shirt.description.includes('вышивкой'), 'Imported outfit keeps the picture and chooses its category at import time');
+            check(shirt?.imagePath && shirt.category === 'clothes' && shirt.description.includes('вышивкой'), 'Imported outfit keeps the picture and its category');
             const plainFiles = new DataTransfer();
             plainFiles.items.add(new File([blob], 'plain.png', { type: 'image/png' }));
             field('import_file').files = plainFiles.files;
@@ -508,14 +526,23 @@
             await click('equip', restored.id);
             context.extensionSettings = JSON.parse(JSON.stringify(context.extensionSettings));
             emit('ready');
-            check(context.extensionSettings.vefari.schemaVersion === 3 && prompt().includes('Льняная туника'), 'Collection membership and equipped state survive a settings roundtrip');
-            const { audiences, ...legacy } = restored;
+            check(context.extensionSettings.vefari.schemaVersion === 4 && prompt().includes('Льняная туника'), 'Collection membership and equipped state survive a settings roundtrip');
+            const { audiences, ...legacy } = { ...restored, category: 'full' };
             context.extensionSettings.vefari = { schemaVersion: 2, enabled: true, items: [legacy], assignments: [{ characterKey: 'character:alice.png', target: 'bot', mode: 'full', itemIds: [legacy.id] }] };
             emit('chat');
             field('tab_user').click();
             check(field('items').querySelector('.vefari_card'), 'Legacy item without audience is retained in both collections');
             await click('edit', legacy.id); input('description', 'Льняная туника с вышивкой на вороте и тканым поясом.'); await save();
-            check(context.extensionSettings.vefari.schemaVersion === 3 && context.extensionSettings.vefari_v2_backup.schemaVersion === 2, 'Collection migration saves schema 3 with original schema 2 backup');
+            check(context.extensionSettings.vefari.schemaVersion === 4 && context.extensionSettings.vefari.items[0].category === 'clothes' && context.extensionSettings.vefari_v2_backup.schemaVersion === 2, 'Collection migration saves schema 4 with original schema 2 backup');
+            context.extensionSettings.vefari = {
+                schemaVersion: 3, enabled: true,
+                items: [{ ...legacy, audiences: ['bot', 'user'], category: 'top' }, { ...legacy, id: 'old-braid', name: 'Коса', category: 'hair', audiences: ['bot', 'user'] }],
+                assignments: [{ characterKey: 'character:alice.png', target: 'user', mode: 'parts', itemIds: [legacy.id, 'old-braid'] }],
+            };
+            emit('chat');
+            check([...field('slots').querySelectorAll('.vefari_slot')].map(slot => slot.dataset.filter).join() === 'clothes,hair' && field('slots').textContent.includes('Коса') && prompt().startsWith('clothes Player: Льняная туника') && prompt().includes('; hairstyle: '), 'A 0.8 outfit worn in parts shows up as clothes and hair');
+            await click('delete', 'old-braid');
+            check(context.extensionSettings.vefari.schemaVersion === 4 && context.extensionSettings.vefari_v3_backup.schemaVersion === 3, 'Saving after the 0.8 migration keeps a schema 3 backup');
 
             context.characterId = undefined;
             emit('chat');
@@ -523,7 +550,7 @@
             check(context.extensionSettings.vefari.items.length === 2 && !prompt(), 'Collection can be edited without an active chat');
             context.characterId = 0;
             emit('chat');
-            field('add').click(); input('name', 'Плетёный пояс'); change('category', 'accessories'); input('description', 'Широкий пояс с геометрическим узором.'); await save();
+            field('add').click(); input('name', 'Коса с лентой'); change('category', 'hair'); input('description', 'Длинная коса с красной лентой.'); await save();
             const patchItem = (id, patch) => {
                 const vefari = context.extensionSettings.vefari;
                 context.extensionSettings.vefari = { ...vefari, items: vefari.items.map(item => item.id === id ? { ...item, ...patch } : item) };
@@ -540,7 +567,7 @@
             check(longTitle.getBoundingClientRect().height <= parseFloat(getComputedStyle(longTitle).lineHeight) * 2 + 1, 'Long names are clamped to two lines');
             check(field('armory').scrollWidth <= field('armory').clientWidth + 1, 'A long name in a slot does not stretch the armory');
             patchItem(longItem.id, { imagePath: 'user/images/vefari_refs/missing.png' });
-            await wait(() => field('items').querySelector(`.vefari_card[data-id="${longItem.id}"] .vefari_text_only`) && field('slots').querySelector('.vefari_slot[data-filter="full"] svg'));
+            await wait(() => field('items').querySelector(`.vefari_card[data-id="${longItem.id}"] .vefari_text_only`) && field('slots').querySelector('.vefari_slot[data-filter="clothes"] svg'));
             check(true, 'A missing picture falls back to the category icon in the card and the slot');
             patchItem(longItem.id, { imagePath: '' });
             await click('delete', longItem.id);

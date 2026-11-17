@@ -41,13 +41,14 @@ test('only Chat Completion profiles are offered, by name and model, without thei
 });
 
 test('the picture goes first, then the category prompt, in one user turn', () => {
-    const [message, ...rest] = describeMessages('shoes', image);
+    const [message, ...rest] = describeMessages('hair', image);
     assert.equal(rest.length, 0);
     assert.equal(message.role, 'user');
     assert.deepEqual(message.content[0], { type: 'image_url', image_url: { url: 'data:image/png;base64,iVBORw0KGgo=' } });
-    assert.deepEqual(message.content[1], { type: 'text', text: OUTFIT_PROMPTS.shoes });
+    assert.deepEqual(message.content[1], { type: 'text', text: OUTFIT_PROMPTS.hair });
     assert.throws(() => describeMessages('cloak', image), /категория/);
-    assert.throws(() => describeMessages('full', { mimeType: 'image/png' }), /Нет картинки/);
+    assert.throws(() => describeMessages('shoes', image), /категория/);
+    assert.throws(() => describeMessages('clothes', { mimeType: 'image/png' }), /Нет картинки/);
 });
 
 test('replies are cleaned to one line; NO_OUTFIT means nothing was found', () => {
@@ -63,7 +64,7 @@ test('replies are cleaned to one line; NO_OUTFIT means nothing was found', () =>
 
 test('the custom route reads no stored SillyTavern key and sends only the given one', () => {
     const describer = { source: 'custom', profileId: '', customUrl: 'https://api.example.com/v1', customModel: 'vision' };
-    const messages = describeMessages('full', image);
+    const messages = describeMessages('clothes', image);
     const withKey = customRequest(describer, 'sk-test-123', messages);
     assert.equal(withKey.chat_completion_source, 'custom');
     assert.equal(withKey.custom_url, 'https://api.example.com/v1');
@@ -81,10 +82,10 @@ test('a profile request goes through Connection Manager with the profile preset'
     const context = hostContext();
     const describer = { source: 'profile', profileId: 'vision', customUrl: '', customModel: '' };
     const signal = new AbortController().signal;
-    assert.equal(await requestDescription(context, describer, { category: 'shoes', image, key: 'sk-ignored', signal }), 'oxblood leather ankle boots');
+    assert.equal(await requestDescription(context, describer, { category: 'hair', image, key: 'sk-ignored', signal }), 'oxblood leather ankle boots');
     const [[profileId, messages, maxTokens, options]] = context.calls.profile;
     assert.equal(profileId, 'vision');
-    assert.equal(messages[0].content[1].text, OUTFIT_PROMPTS.shoes);
+    assert.equal(messages[0].content[1].text, OUTFIT_PROMPTS.hair);
     assert.equal(maxTokens, MAX_TOKENS);
     assert.equal(options.signal, signal);
     assert.equal(options.includePreset, true);
@@ -105,7 +106,7 @@ test('a custom request carries the key only in its own header', async () => {
 });
 
 test('missing settings, wrong profiles and failures explain themselves', async () => {
-    const run = (describer, context = hostContext()) => requestDescription(context, { source: 'profile', profileId: '', customUrl: '', customModel: '', ...describer }, { category: 'full', image });
+    const run = (describer, context = hostContext()) => requestDescription(context, { source: 'profile', profileId: '', customUrl: '', customModel: '', ...describer }, { category: 'clothes', image });
     await assert.rejects(run({}), /Выберите подключение/);
     await assert.rejects(run({ profileId: 'kobold' }), /не Chat Completion/);
     await assert.rejects(run({ profileId: 'gone' }), /не найден/);
@@ -117,7 +118,7 @@ test('missing settings, wrong profiles and failures explain themselves', async (
     await assert.rejects(run({ profileId: 'vision' }, hostContext({ reply: { content: '' } })), /пустой ответ/);
     const abort = new AbortController();
     abort.abort();
-    const cancelled = requestDescription(hostContext({ fail: new Error('aborted') }), { source: 'profile', profileId: 'vision' }, { category: 'full', image, signal: abort.signal });
+    const cancelled = requestDescription(hostContext({ fail: new Error('aborted') }), { source: 'profile', profileId: 'vision' }, { category: 'clothes', image, signal: abort.signal });
     await assert.rejects(cancelled, error => error.name === 'AbortError');
 });
 

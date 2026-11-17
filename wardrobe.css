@@ -66,6 +66,7 @@ button:disabled, input:disabled, select:disabled { cursor: not-allowed; opacity:
 .vefari_icon { display: block; width: 18px; height: 18px; flex: 0 0 auto; }
 [data-icon] { display: inline-flex; }
 .vefari_hint { color: var(--vefari-ash); font-size: 12px; line-height: 1.5; }
+.vefari_macro { padding: 1px 4px; border: 1px solid var(--vefari-iron); background: var(--vefari-deep); color: var(--vefari-frost); font: 12px ui-monospace, Consolas, monospace; white-space: nowrap; user-select: all; }
 .vefari_row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
 
 /* Buttons: iron by default, polished steel with a double frame for the one primary action. */
@@ -103,7 +104,7 @@ input[type="text"]:focus, input[type="number"]:focus, input[type="url"]:focus, i
 textarea { min-height: 112px; max-height: 300px; resize: vertical; }
 .vefari_field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; min-width: 0; color: #a9b4ba; font-size: 12px; }
 
-/* Cells: a strict row of radio choices (mode, collection, send mode). */
+/* Cells: a strict row of radio choices (collection, send mode). */
 .vefari_cells { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); min-width: 0; margin: 0; padding: 0; border: 1px solid var(--vefari-iron-strong); }
 .vefari_cell { position: relative; display: block; min-width: 0; }
 .vefari_cell input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
@@ -112,8 +113,6 @@ textarea { min-height: 112px; max-height: 300px; resize: vertical; }
 .vefari_cell input:hover + span { color: var(--vefari-snow); }
 .vefari_cell input:checked + span { background: var(--vefari-steel); color: var(--vefari-night); }
 .vefari_cell input:focus-visible + span { outline: 1px solid var(--vefari-frost); outline-offset: -4px; }
-.vefari_cells:disabled { opacity: 0.45; }
-.vefari_cells:disabled input { cursor: not-allowed; }
 
 /* Header */
 .vefari_header { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; gap: 12px; min-height: 60px; padding: 10px 20px; border-bottom: 1px solid var(--vefari-iron); }

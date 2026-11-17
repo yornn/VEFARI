@@ -19,64 +19,57 @@ test('identity comes from card filename and rejects missing or grouped character
     }
 });
 
-test('prompt contains only selected clothing data for the two participants', () => {
+test('prompt is one plain line per participant, Char first, with no brackets or framing', () => {
     const item = { ...garment('coat'), imagePath: '/user/images/vefari_refs/coat.png' };
     let state = wear(inventory(item), 'coat');
     state = wear(state, 'coat', { ...owner, target: 'user' });
     const text = composePrompt(snapshot(state));
-    assert.equal(text, '[OUTFIT: Alice is currently wearing: FULL: coat description.]\n'
-        + '[OUTFIT: Player is currently wearing: FULL: coat description.]');
-    assert.doesNotMatch(text, /imagePath|vefari|base64|OUTFIT LOCK|JSON|wearers|garments|participant/i);
+    assert.equal(text, 'clothes Alice: coat description\nclothes Player: coat description');
+    assert.doesNotMatch(text, /[[\]]|imagePath|vefari|base64|OUTFIT|wearing|JSON|participant/i);
 });
 
-test('OUTFIT includes only the participant who has clothing selected', () => {
+test('only the participant who has something on gets a line', () => {
     for (const target of ['bot', 'user']) {
         const state = wear(inventory(garment('coat')), 'coat', { ...owner, target });
-        const text = composePrompt(snapshot(state));
         const name = target === 'bot' ? 'Alice' : 'Player';
-        assert.equal(text, `[OUTFIT: ${name} is currently wearing: FULL: coat description.]`);
-        assert.doesNotMatch(text, /vefari/i);
+        assert.equal(composePrompt(snapshot(state)), `clothes ${name}: coat description`);
     }
 });
 
-test('newlines and nested brackets cannot split the participant block; stored text is unchanged', () => {
-    const description = 'Blue "coat"\n[linen]\r\n  with a belt';
-    const state = wear(inventory({ ...garment('coat'), description }), 'coat');
-    const ctx = context();
-    ctx.characters[0].name = 'Alice [Knight]\nof Dawn';
-    const text = composePrompt(wardrobeSnapshot(state, resolveParticipants(ctx)));
-    assert.equal(text, '[OUTFIT: Alice (Knight) of Dawn is currently wearing: FULL: Blue "coat" (linen) with a belt.]');
-    assert.equal(state.items[0].description, description);
-    assert.equal(ctx.characters[0].name, 'Alice [Knight]\nof Dawn');
-});
-
-test('full outfit and hair form one compact block with uppercase categories', () => {
+test('clothes and hairstyle share one line, joined by a semicolon', () => {
     const items = [
-        { ...garment('dress'), description: 'Белая рубашка. Шляпа-солнце. Трикотажная юбка.' },
-        { ...garment('hair', 'hair'), description: 'Длинные тёмные волосы' },
+        { ...garment('tunic'), description: 'long dark purple tunic, mid-thigh length, medieval Norse attire.' },
+        { ...garment('bob', 'hair'), description: 'ultra-blunt bowl-shaped micro bob, heavy straight fringe' },
     ];
     let state = inventory(...items);
     for (const item of items) state = wear(state, item.id, { ...owner, target: 'user' });
     const ctx = context();
     ctx.name1 = 'Кристина';
     assert.equal(composePrompt(wardrobeSnapshot(state, resolveParticipants(ctx))),
-        '[OUTFIT: Кристина is currently wearing: FULL: Белая рубашка. Шляпа-солнце. Трикотажная юбка. HAIR: Длинные тёмные волосы.]');
+        'clothes Кристина: long dark purple tunic, mid-thigh length, medieval Norse attire; '
+        + 'hairstyle: ultra-blunt bowl-shaped micro bob, heavy straight fringe');
 });
 
-test('parts mode emits all active uppercase categories and excludes the hidden full outfit', () => {
-    const categories = ['full', 'top', 'bottom', 'shoes', 'accessories', 'hair'];
-    const items = categories.map(category => garment(category, category));
-    let state = inventory(...items);
-    for (const item of items) state = wear(state, item.id);
-    assert.equal(composePrompt(snapshot(state)), '[OUTFIT: Alice is currently wearing: '
-        + 'TOP: top description. BOTTOM: bottom description. SHOES: shoes description. '
-        + 'ACCESSORIES: accessories description. HAIR: hair description.]');
+test('a hairstyle alone carries the name itself', () => {
+    const state = wear(inventory(garment('braid', 'hair')), 'braid');
+    assert.equal(composePrompt(snapshot(state)), 'hairstyle Alice: braid description');
 });
 
-test('existing sentence punctuation is retained without duplicate full stops', () => {
-    for (const ending of ['.', '!', '?', '…']) {
+test('line breaks cannot split a participant line; brackets and stored text are left alone', () => {
+    const description = 'Blue "coat"\n[linen]\r\n  with a belt';
+    const state = wear(inventory({ ...garment('coat'), description }), 'coat');
+    const ctx = context();
+    ctx.characters[0].name = 'Alice [Knight]\nof Dawn';
+    const text = composePrompt(wardrobeSnapshot(state, resolveParticipants(ctx)));
+    assert.equal(text, 'clothes Alice [Knight] of Dawn: Blue "coat" [linen] with a belt');
+    assert.equal(state.items[0].description, description);
+    assert.equal(ctx.characters[0].name, 'Alice [Knight]\nof Dawn');
+});
+
+test('trailing full stops, commas and semicolons are dropped; other endings stay', () => {
+    for (const [ending, kept] of [['.', ''], ['. ', ''], [';', ''], [',', ''], ['!', '!'], ['?', '?'], ['…', '…']]) {
         const state = wear(inventory({ ...garment('coat'), description: `Blue coat${ending}` }), 'coat');
-        assert.equal(composePrompt(snapshot(state)), `[OUTFIT: Alice is currently wearing: FULL: Blue coat${ending}]`);
+        assert.equal(composePrompt(snapshot(state)), `clothes Alice: Blue coat${kept}`);
     }
 });
 
@@ -97,8 +90,10 @@ test('switching cards cannot include previous owners clothing', () => {
     ctx.characters[0].avatar = 'bob.png';
     assert.equal(composePrompt(wardrobeSnapshot(state, resolveParticipants(ctx))), '');
 });
+
 test('outfitBlock formats one participant exactly like the chat injection', () => {
-    const items = [{ ...garment('jacket', 'top'), description: 'Black [leather] jacket' }, { ...garment('jeans', 'bottom'), description: 'Blue jeans.' }];
-    assert.equal(outfitBlock('Маша', items), '[OUTFIT: Маша is currently wearing: TOP: Black (leather) jacket. BOTTOM: Blue jeans.]');
+    const items = [{ ...garment('jacket'), description: 'Black leather jacket.' }, { ...garment('bun', 'hair'), description: 'low bun' }];
+    assert.equal(outfitBlock('Маша', items), 'clothes Маша: Black leather jacket; hairstyle: low bun');
     assert.equal(outfitBlock('Маша', []), '');
+    assert.equal(outfitBlock('Маша', [{ ...garment('blank'), description: ' . ' }]), '');
 });

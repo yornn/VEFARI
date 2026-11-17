@@ -1,8 +1,10 @@
-// Compact clothing descriptions: one bracketed block per dressed participant.
+// Compact clothing hints: one plain line per dressed participant.
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { TARGETS, describeItems, selectWardrobe } from './wardrobe.js';
 
 export const PROMPT_KEY = 'vefari_outfit';
+// What each category is called in the line the model reads.
+const LABELS = Object.freeze({ clothes: 'clothes', hair: 'hairstyle' });
 
 export function resolveParticipants(context) {
     if (context.groupId !== undefined && context.groupId !== null && context.groupId !== '') return null;
@@ -23,15 +25,16 @@ export function wardrobeSnapshot(state, participants) {
     return result;
 }
 
-/** One participant's block; shared by the chat injection and the image generator bridge. */
+/**
+ * One participant's line, `clothes Name: …; hairstyle: …`; shared by the chat injection
+ * and the image generator bridge. The name goes with whichever part comes first.
+ */
 export function outfitBlock(name, items) {
-    const garments = items.flatMap(({ category, description }) => {
-        const text = blockText(description);
-        if (!text) return [];
-        const ending = /[.!?…;:]$/u.test(text) ? '' : '.';
-        return [`${category.toUpperCase()}: ${text}${ending}`];
+    const parts = items.flatMap(({ category, description }) => {
+        const text = lineText(description).replace(/[\s.,;]+$/u, '');
+        return text ? [[LABELS[category] ?? category, text]] : [];
     });
-    return garments.length ? `[OUTFIT: ${blockText(name)} is currently wearing: ${garments.join(' ')}]` : '';
+    return parts.map(([label, text], index) => index ? `${label}: ${text}` : `${label} ${lineText(name)}: ${text}`).join('; ');
 }
 
 export function composePrompt(snapshot) {
@@ -42,8 +45,8 @@ export function composePrompt(snapshot) {
         .join('\n');
 }
 
-// Preserve one pair of boundary brackets and one line per participant.
+// One line per participant: line breaks in names and descriptions become spaces.
 // Only the prompt is normalized; stored names and descriptions are unchanged.
-function blockText(value) {
-    return String(value ?? '').replace(/\[/g, '(').replace(/\]/g, ')').replace(/\s+/g, ' ').trim();
+function lineText(value) {
+    return String(value ?? '').replace(/\s+/g, ' ').trim();
 }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { categoriesForMode, createState, normalizeEndpoint, reduceWardrobe, selectWardrobe, selectCollection } from '../wardrobe.js';
+import { CATEGORIES, createState, normalizeEndpoint, reduceWardrobe, selectWardrobe, selectCollection } from '../wardrobe.js';
 import { createId } from '../ids.js';
 import { freezeDeep, garment, inventory, owner, wear } from './fixtures.js';
 
@@ -9,11 +9,11 @@ const selection = state => selectWardrobe(state, owner.characterKey, owner.targe
 test('domain state is JSON-serializable and starts with no assignments', () => {
     const state = createState();
     assert.deepEqual(state, {
-        schemaVersion: 3, enabled: true, items: [], assignments: [], sendModes: { bot: 'image', user: 'image' }, maxImageRefs: 4,
-        describer: { source: 'profile', profileId: '', customUrl: '', customModel: '' },
+        schemaVersion: 4, enabled: true, items: [], assignments: [], sendModes: { bot: 'image', user: 'image' }, maxImageRefs: 4,
+        injectDepth: 4, describer: { source: 'profile', profileId: '', customUrl: '', customModel: '' },
     });
     assert.deepEqual(JSON.parse(JSON.stringify(state)), state);
-    assert.deepEqual(selection(state), { mode: 'full', items: [] });
+    assert.deepEqual(selection(state), { items: [] });
     assert.equal(state.assignments.length, 0);
 });
 
@@ -56,7 +56,9 @@ test('bad commands fail atomically', () => {
         { type: 'wear', ...owner, itemId: 'missing' },
         { type: 'wear', ...owner, target: 'npc', itemId: 'coat' },
         { type: 'wear', ...owner, characterKey: null, itemId: 'coat' },
-        { type: 'set-mode', ...owner, mode: 'invalid' },
+        { type: 'add-item', item: { ...garment('new'), category: 'full' } },
+        { type: 'add-item', item: { ...garment('new'), category: 'accessories' } },
+        { type: 'set-mode', ...owner, mode: 'parts' },
         { type: 'set-enabled', enabled: 'false' },
         { type: 'remove-category', ...owner, category: 'constructor' },
         { type: 'unknown' },
@@ -65,14 +67,15 @@ test('bad commands fail atomically', () => {
     assert.equal(JSON.stringify(state), before);
 });
 
-test('full and parts selections share accessories but never mix body clothing', () => {
-    let state = inventory(garment('dress'), garment('shirt', 'top'), garment('pants', 'bottom'), garment('boots', 'shoes'), garment('ring', 'accessories'), garment('braid', 'hair'));
+test('the wardrobe has two categories: clothing and hairstyle', () => {
+    assert.deepEqual(CATEGORIES, { clothes: 'Одежда', hair: 'Причёска' });
+});
+
+test('clothes and hair are worn together, hair listed second whatever the order of wearing', () => {
+    let state = inventory(garment('braid', 'hair'), garment('dress'));
     for (const item of state.items) state = wear(freezeDeep(state), item.id);
-    assert.deepEqual(selection(state).items.map(item => item.id), ['shirt', 'pants', 'boots', 'ring', 'braid']);
-    state = reduceWardrobe(freezeDeep(state), { type: 'set-mode', ...owner, mode: 'full' });
-    assert.deepEqual(selection(state).items.map(item => item.id), ['dress', 'ring', 'braid']);
-    state = reduceWardrobe(state, { type: 'set-mode', ...owner, mode: 'parts' });
-    assert.equal(selection(state).items.length, 5);
+    assert.deepEqual(selection(state).items.map(item => item.id), ['dress', 'braid']);
+    assert.deepEqual(Object.keys(state.assignments[0]).sort(), ['characterKey', 'itemIds', 'target']);
 });
 
 test('wearing another item of the same category replaces rather than stacks it', () => {
@@ -84,25 +87,23 @@ test('wearing another item of the same category replaces rather than stacks it',
 });
 
 test('owners and cards have separate selections even with special keys', () => {
-    let state = inventory(garment('coat'), garment('boots', 'shoes'));
+    let state = inventory(garment('coat'), garment('braid', 'hair'));
     state = wear(state, 'coat');
-    state = wear(state, 'boots', { ...owner, target: 'user' });
+    state = wear(state, 'braid', { ...owner, target: 'user' });
     state = wear(state, 'coat', { ...owner, characterKey: '__proto__' });
-    assert.equal(selection(state).mode, 'full');
-    assert.equal(selectWardrobe(state, owner.characterKey, 'user').mode, 'parts');
+    assert.deepEqual(selection(state).items.map(item => item.id), ['coat']);
+    assert.deepEqual(selectWardrobe(state, owner.characterKey, 'user').items.map(item => item.id), ['braid']);
     assert.deepEqual(selectWardrobe(state, 'character:bob.png', 'bot').items, []);
     assert.equal(selectWardrobe(state, '__proto__', 'bot').items.length, 1);
 });
 
-test('remove-category and clear-owner also remove hidden clothing', () => {
-    let state = inventory(garment('coat'), garment('shirt', 'top'), garment('braid', 'hair'));
+test('remove-category takes off one category and clear-owner takes off everything', () => {
+    let state = inventory(garment('coat'), garment('braid', 'hair'));
     for (const item of state.items) state = wear(state, item.id);
     state = wear(state, 'coat', { ...owner, target: 'user' });
     state = reduceWardrobe(freezeDeep(state), { type: 'remove-category', ...owner, category: 'hair' });
-    assert.deepEqual(selection(state).items.map(item => item.id), ['shirt']);
+    assert.deepEqual(selection(state).items.map(item => item.id), ['coat']);
     state = reduceWardrobe(freezeDeep(state), { type: 'clear-owner', ...owner });
-    assert.deepEqual(selection(state).items, []);
-    state = reduceWardrobe(state, { type: 'set-mode', ...owner, mode: 'full' });
     assert.deepEqual(selection(state).items, []);
     assert.equal(selectWardrobe(state, owner.characterKey, 'user').items.length, 1);
 });
@@ -119,7 +120,7 @@ test('category edits and deletion remove all references, including other owners 
     for (const characterKey of [owner.characterKey, 'character:bob.png']) {
         for (const target of ['bot', 'user']) state = wear(state, 'coat', { characterKey, target });
     }
-    const changed = reduceWardrobe(freezeDeep(state), { type: 'edit-item', item: garment('coat', 'top') });
+    const changed = reduceWardrobe(freezeDeep(state), { type: 'edit-item', item: garment('coat', 'hair') });
     assert.ok(changed.assignments.every(entry => !entry.itemIds.length));
     const removed = reduceWardrobe(state, { type: 'delete-item', itemId: 'coat' });
     assert.ok(removed.assignments.every(entry => !entry.itemIds.length));
@@ -138,7 +139,7 @@ test('User and Char collections are global lists independent of selected card', 
     const state = inventory(
         { ...garment('dress'), audiences: ['user'] },
         { ...garment('coat'), audiences: ['bot'] },
-        garment('ring', 'accessories'),
+        garment('ring', 'hair'),
     );
     assert.deepEqual(selectCollection(state, 'user').map(item => item.id), ['dress', 'ring']);
     assert.deepEqual(selectCollection(state, 'bot').map(item => item.id), ['coat', 'ring']);
@@ -198,12 +199,11 @@ test('endpoints with credentials, queries or other schemes are refused', () => {
     assert.throws(() => normalizeEndpoint('api.example.com/v1'), /полный URL/);
 });
 
-test('mode categories match what the injection can show', () => {
-    assert.deepEqual(categoriesForMode('full'), ['full', 'accessories', 'hair']);
-    assert.deepEqual(categoriesForMode('parts'), ['top', 'bottom', 'shoes', 'accessories', 'hair']);
-    assert.throws(() => categoriesForMode('cloak'), /Неизвестный режим/);
-    let state = inventory(garment('dress', 'full'), garment('shirt', 'top'), garment('ring', 'accessories'));
-    state = wear(wear(wear(state, 'dress'), 'ring'), 'shirt');
-    const { mode, items } = selection(state);
-    assert.ok(items.every(item => categoriesForMode(mode).includes(item.category)));
+test('injection depth is a whole number of chat messages from 0 to 100', () => {
+    const state = freezeDeep(createState());
+    for (const depth of [0, 1, 12, 100]) assert.equal(reduceWardrobe(state, { type: 'set-inject-depth', depth }).injectDepth, depth);
+    for (const depth of [-1, 101, 2.5, '3', null, undefined, Number.NaN]) {
+        assert.throws(() => reduceWardrobe(state, { type: 'set-inject-depth', depth }), /от 0 до 100/);
+    }
+    assert.equal(state.injectDepth, 4);
 });

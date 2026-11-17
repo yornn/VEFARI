@@ -18,19 +18,14 @@
                     <button id="vefari_enable" class="vefari_button" type="button">Включить</button>
                 </div>
                 <p id="vefari_context" class="vefari_hint" hidden>Откройте одиночный чат, чтобы надевать вещи. Коллекцию можно редактировать и без чата.</p>
-                <fieldset id="vefari_mode" class="vefari_cells">
-                    <legend class="vefari_visually_hidden">Режим</legend>
-                    <label class="vefari_cell"><input id="vefari_mode_full" type="radio" name="vefari_mode" value="full" checked><span>Целиком</span></label>
-                    <label class="vefari_cell"><input id="vefari_mode_parts" type="radio" name="vefari_mode" value="parts"><span>По частям</span></label>
-                </fieldset>
                 <ul id="vefari_slots" aria-label="Надето"></ul>
                 <button id="vefari_clear" class="vefari_button vefari_button_quiet" type="button">Снять всё</button>
                 <fieldset id="vefari_send" class="vefari_send">
                     <legend>В генератор картинок</legend>
                     <div class="vefari_send_row">
                         <div class="vefari_cells vefari_send_cells">
-                            <label class="vefari_cell" title="Только текст: в генератор уходят описания вещей"><input id="vefari_send_text" type="radio" name="vefari_send" value="text" aria-label="Только текст"><span data-icon="text"></span></label>
-                            <label class="vefari_cell" title="Текст и картинка: картинки вещей уходят в генератор референсами"><input id="vefari_send_image" type="radio" name="vefari_send" value="image" aria-label="Текст и картинка"><span data-icon="picture"></span></label>
+                            <label class="vefari_cell" title="Только текст: после смены наряда в генератор уходит его описание"><input id="vefari_send_text" type="radio" name="vefari_send" value="text" aria-label="Только текст"><span data-icon="text"></span></label>
+                            <label class="vefari_cell" title="Текст и картинка: после смены наряда в генератор уходят описание и картинки вещей"><input id="vefari_send_image" type="radio" name="vefari_send" value="image" aria-label="Текст и картинка"><span data-icon="picture"></span></label>
                         </div>
                         <span id="vefari_send_caption" class="vefari_send_caption" aria-hidden="true"></span>
                     </div>
@@ -53,9 +48,19 @@
                         <h4 id="vefari_settings_wardrobe">Гардероб</h4>
                         <label class="vefari_rune_toggle"><input id="vefari_enabled" class="vefari_visually_hidden" type="checkbox"><span class="vefari_rune_box" data-icon="algiz"></span><span>Гардероб включён: одежда уходит модели</span></label>
                         <p class="vefari_hint">Выключение сразу очищает инжект, вещи остаются.</p>
+                        <div class="vefari_limit">
+                            <label for="vefari_inject_depth">Глубина вставки</label>
+                            <div class="vefari_stepper">
+                                <button id="vefari_depth_down" class="vefari_icon_button" type="button" aria-label="Ближе к ответу"><span data-icon="minus"></span></button>
+                                <input id="vefari_inject_depth" type="number" min="0" max="100" step="1" inputmode="numeric">
+                                <button id="vefari_depth_up" class="vefari_icon_button" type="button" aria-label="Дальше от ответа"><span data-icon="plus"></span></button>
+                            </div>
+                        </div>
+                        <p class="vefari_hint">Сколько сообщений чата стоит после строк с одеждой. При 0 они последние перед ответом, и модель описывает наряды в каждом сообщении. Чем больше число, тем тише подсказка. По умолчанию 4.</p>
                     </section>
                     <section class="vefari_settings_block" aria-labelledby="vefari_settings_generator">
                         <h4 id="vefari_settings_generator">Генератор картинок</h4>
+                        <p class="vefari_hint">Впишите в OOC генератора <code class="vefari_macro">{{outfits}}</code> — модель, которая пишет промпт картинки, будет знать, кто во что одет сейчас, и сама решит, сколько показать в кадре.</p>
                         <div class="vefari_limit">
                             <label for="vefari_image_limit">Максимум картинок</label>
                             <div class="vefari_stepper">
@@ -65,8 +70,8 @@
                             </div>
                         </div>
                         <p class="vefari_hint">Последняя отправка: <span id="vefari_bridge_report"></span></p>
-                        <p class="vefari_hint">Для notsosillynotsoimages (Gemini-compatible): наряды тех, кого генератор рисует, уходят референсами; сверх лимита — только описанием.</p>
-                        <p class="vefari_hint">Текст или текст с картинкой выбирается внизу оружейной, отдельно для User и Char.</p>
+                        <p class="vefari_hint">Сам запрос картинки VEFARI не трогает, пока наряд не сменили. Сменили — к промпту добавится короткая пометка о новом наряде. Чище всего после смены нажать в генераторе «переписать промпт и перегенерировать».</p>
+                        <p class="vefari_hint">Что уходит при смене — текст или текст с картинкой вещи — выбирается внизу оружейной, отдельно для User и Char; картинок не больше лимита. Работает с notsosillynotsoimages (Gemini-compatible).</p>
                     </section>
                     <section class="vefari_settings_block" aria-labelledby="vefari_settings_exchange">
                         <h4 id="vefari_settings_exchange">Обмен</h4>
@@ -93,7 +98,7 @@
                     <section class="vefari_settings_block" aria-labelledby="vefari_settings_prompt">
                         <div class="vefari_prompt_head"><h4 id="vefari_settings_prompt">Текст инжекта</h4><div id="vefari_send_marks" class="vefari_send_marks" role="list" aria-label="Что уходит в генератор картинок"></div></div>
                         <pre id="vefari_prompt"></pre>
-                        <p class="vefari_hint">В чат всегда уходит текст. Картинки — только в генератор картинок и только у того, кому в оружейной выбран режим «текст и картинка»; вещи без картинки и сверх лимита идут текстом.</p>
+                        <p class="vefari_hint">Этот текст уходит в чат и подставляется вместо <code class="vefari_macro">{{outfits}}</code>. Картинки вещей — только в генератор картинок, только после смены наряда и только у того, кому в оружейной выбран режим «текст и картинка».</p>
                     </section>
                 </div>
             </section>
@@ -131,7 +136,7 @@
                                     <button id="vefari_describe" class="vefari_icon_button vefari_describe" type="button" title="Описать по картинке" aria-label="Описать по картинке" data-busy="false"><span data-icon="feather"></span></button>
                                 </div>
                                 <textarea id="vefari_description" rows="4" placeholder="Плотная шерсть цвета пепла, подбитая волчьим мехом, железная фибула у горла" required></textarea>
-                                <span class="vefari_hint">Описание всегда уходит в чат; картинка — в генератор картинок, если в оружейной выбран режим с картинкой. Перо напишет описание по картинке для выбранной категории.</span>
+                                <span class="vefari_hint">Описание уходит в чат и в макрос {{outfits}}; картинка — в генератор картинок после смены наряда, если в оружейной выбран режим с картинкой. Перо напишет описание по картинке для выбранной категории.</span>
                             </div>
                         </div>
                     </div>

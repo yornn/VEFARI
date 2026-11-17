@@ -13,10 +13,10 @@ test('every category has its own prompt with the shared output contract', () => 
     }
 });
 
-test('the full outfit leaves out the person and the hairstyle; hair is its own category', () => {
-    assert.match(OUTFIT_PROMPTS.full, /Never describe the person: no hair or hairstyle, face, facial hair/);
-    assert.match(OUTFIT_PROMPTS.full, /Weapons and other carried items/);
+test('clothing covers the whole outfit but not the person or the hairstyle; hair is its own category', () => {
+    assert.deepEqual(Object.keys(OUTFIT_PROMPTS), ['clothes', 'hair']);
+    assert.match(OUTFIT_PROMPTS.clothes, /describe the complete outfit: garments and layers, footwear, weapons and carried items, accessories and jewelry/);
+    assert.match(OUTFIT_PROMPTS.clothes, /Never describe the person: no hair or hairstyle, face, facial hair/);
     assert.match(OUTFIT_PROMPTS.hair, /describe only the hairstyle/);
     assert.match(OUTFIT_PROMPTS.hair, /Leave out clothing, hats, crowns/);
-    for (const category of ['top', 'bottom', 'shoes', 'accessories']) assert.match(OUTFIT_PROMPTS[category], /describe only/, category);
 });

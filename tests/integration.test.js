@@ -34,17 +34,28 @@ function host(options = {}) {
     };
 }
 
-test('connect is idempotent; generation maintains one depth-zero system prompt', () => {
+test('the saved depth decides where the outfit lines go in the chat', () => {
+    const h = host();
+    h.controller.connect();
+    h.controller.dispatch({ type: 'set-inject-depth', depth: 0 });
+    assert.deepEqual(h.prompts.get('vefari_outfit'), ['clothes Alice: coat description', 1, 0, false, 0]);
+    h.controller.dispatch({ type: 'set-inject-depth', depth: 12 });
+    h.context.eventSource.emit('generate');
+    assert.deepEqual(h.prompts.get('vefari_outfit').slice(1), [1, 12, false, 0]);
+    assert.equal(h.saves, 2);
+});
+
+test('connect is idempotent; generation maintains one system prompt at the default depth', () => {
     const h = host();
     h.controller.connect();
     h.controller.connect();
     assert.equal(h.context.eventSource.listenerCount('generate'), 1);
     for (const type of ['normal', 'swipe', 'regenerate', 'quiet']) {
         h.context.eventSource.emit('generate', type);
-        assert.equal(h.prompt(), '[OUTFIT: Alice is currently wearing: FULL: coat description.]');
+        assert.equal(h.prompt(), 'clothes Alice: coat description');
     }
     assert.equal(h.prompts.size, 1);
-    assert.deepEqual(h.prompts.get('vefari_outfit').slice(1), [1, 0, false, 0]);
+    assert.deepEqual(h.prompts.get('vefari_outfit').slice(1), [1, 4, false, 0]);
     assert.equal(h.saves, 0);
 });
 
@@ -185,31 +196,130 @@ const geminiBody = (text = 'Alice in the rain') => JSON.stringify({
     contents: [{ role: 'user', parts: [{ text }] }], generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
 });
 
-function bridgeHost(options = {}) {
+function bridgeHost(options = {}, before = () => {}) {
     const h = host({ readImage: async () => ({ mimeType: 'image/png', base64: 'COAT' }), ...options });
     h.context.extensionSettings.inline_image_gen = {
         apiType: 'gemini', endpoint: 'https://img.example', geminiSendRefs: true,
         charRefAlways: false, userRefAlways: false, charRef: { name: '' }, userRef: { name: '' },
     };
     h.controller.dispatch({ type: 'edit-item', item: { ...garment('coat'), imagePath: '/user/images/vefari_refs/coat.png' } });
+    before(h.context);
     h.controller.connect();
     return h;
 }
 
 const generate = (h, body = geminiBody()) => h.scope.fetch(GENERATOR_URL, { method: 'POST', body });
 const sentParts = h => JSON.parse(h.scope.sent.at(-1)[1].body).contents[0].parts;
+const redress = (h, description = 'red dress') => h.controller.dispatch({
+    type: 'edit-item', item: { ...garment('coat'), description, imagePath: '/user/images/vefari_refs/coat.png' },
+});
 
-test('bridge adds outfit images to generator requests and records a report', async () => {
+// A host whose SillyTavern runs the newer macro engine (true) or only the older parser (false).
+function macroHost(engine) {
+    const registry = new Map();
+    const h = bridgeHost({}, context => {
+        context.powerUserSettings = { experimental_macro_engine: engine };
+        context.macros = {
+            category: { MISC: 'misc' },
+            registry: { registerMacro: (name, options) => registry.set(name, options), unregisterMacro: name => registry.delete(name) },
+        };
+        context.registerMacro = (name, handler, description) => registry.set(`legacy:${name}`, { handler, description });
+        context.unregisterMacro = name => registry.delete(`legacy:${name}`);
+    });
+    return { h, registry };
+}
+
+test('bridge stays silent while the prompt already has the outfit, and says so in the report', async () => {
     const h = bridgeHost();
     let renders = 0;
     h.controller.subscribe(() => renders++);
+    const body = geminiBody();
+    await generate(h, body);
+    await generate(h, body);
+    assert.deepEqual(h.scope.sent.map(([, init]) => init.body), [body, body]);
+    assert.deepEqual(h.controller.view().report, { sides: [], changed: false });
+    assert.equal(renders, 2);
+    assert.deepEqual(h.errors, []);
+});
+
+test('after a change of outfit the same prompt gets the picture and a closing update note', async () => {
+    const h = bridgeHost();
+    await generate(h);
+    redress(h);
     await generate(h);
     const parts = sentParts(h);
+    assert.match(parts[0].text, /^Outfit reference for Alice: coat\. Use it only for the design/);
     assert.deepEqual(parts[1], { inlineData: { mimeType: 'image/png', data: 'COAT' } });
-    assert.ok(parts.at(-1).text.endsWith('FULL: coat description.]\n\nAlice in the rain'));
-    assert.deepEqual(h.controller.view().report, { sides: [{ name: 'Alice', images: ['full'], text: [] }] });
-    assert.equal(renders, 1);
-    assert.deepEqual(h.errors, []);
+    assert.ok(parts.at(-1).text.startsWith('Alice in the rain\n\n[Outfit update: '));
+    assert.ok(parts.at(-1).text.endsWith('\nclothes Alice: red dress]'));
+    assert.deepEqual(h.controller.view().report, { sides: [{ name: 'Alice', images: ['clothes'], text: [] }] });
+    // Back in what the prompt describes: silent again.
+    redress(h, 'coat description');
+    const body = geminiBody();
+    await generate(h, body);
+    assert.equal(h.scope.sent.at(-1)[1].body, body);
+});
+
+test('a prompt written from the chat before a change is noted; dry runs, quiet requests and chat changes are not writers', async () => {
+    const h = bridgeHost();
+    h.context.eventSource.emit('generate', 'normal', {}, false);
+    redress(h);
+    h.context.eventSource.emit('generate', 'normal', {}, true);
+    h.context.eventSource.emit('generate', 'quiet', {}, false);
+    // A rewrite of the picture's prompt from the reply's chat, which still had the coat.
+    await generate(h, geminiBody('Alice by the fire'));
+    assert.match(sentParts(h).at(-1).text, /\nclothes Alice: red dress]$/);
+    // A new reply is written with the dress in the chat: its pictures need nothing.
+    h.context.eventSource.emit('generate', 'normal', {}, false);
+    const next = geminiBody('Alice at dawn');
+    await generate(h, next);
+    assert.equal(h.scope.sent.at(-1)[1].body, next);
+    // Another chat: what was seen in this one says nothing about prompts written there.
+    redress(h, 'green cloak');
+    h.context.eventSource.emit('chat');
+    const elsewhere = geminiBody('Alice on the road');
+    await generate(h, elsewhere);
+    assert.equal(h.scope.sent.at(-1)[1].body, elsewhere);
+});
+
+test('{{outfits}} registers with the macro engine in use, gives the current lines and is removed on dispose', () => {
+    const modern = macroHost(true);
+    assert.deepEqual([...modern.registry.keys()], ['outfits']);
+    assert.equal(modern.registry.get('outfits').category, 'misc');
+    assert.match(modern.registry.get('outfits').description, /VEFARI/);
+    assert.equal(modern.registry.get('outfits').handler(), 'clothes Alice: coat description');
+    redress(modern.h);
+    assert.equal(modern.registry.get('outfits').handler(), 'clothes Alice: red dress');
+    modern.h.controller.dispose();
+    assert.equal(modern.registry.size, 0);
+    const legacy = macroHost(false);
+    assert.deepEqual([...legacy.registry.keys()], ['legacy:outfits']);
+    assert.equal(legacy.registry.get('legacy:outfits').handler('nonce'), 'clothes Alice: coat description');
+    legacy.h.controller.dispatch({ type: 'set-enabled', enabled: false });
+    assert.equal(legacy.registry.get('legacy:outfits').handler('nonce'), '');
+});
+
+test('a prompt rewritten through {{outfits}} after a change already has the new outfit and gets nothing', async () => {
+    const { h, registry } = macroHost(true);
+    h.context.eventSource.emit('generate', 'normal', {}, false);
+    redress(h);
+    // The prompt model expands {{outfits}} from its OOC field while it rewrites the prompt.
+    registry.get('outfits').handler();
+    const rewritten = geminiBody('Alice by the fire in a red dress');
+    await generate(h, rewritten);
+    assert.equal(h.scope.sent.at(-1)[1].body, rewritten);
+    assert.deepEqual(h.controller.view().report, { sides: [], changed: false });
+});
+
+test('a broken macro registration is reported and the rest still works', async () => {
+    const h = bridgeHost({}, context => {
+        context.registerMacro = () => { throw new Error('No macros here'); };
+    });
+    assert.equal(h.errors[0].message, 'No macros here');
+    await generate(h);
+    redress(h);
+    await generate(h);
+    assert.match(sentParts(h).at(-1).text, /red dress]$/);
 });
 
 test('disabled wardrobe leaves request untouched', async () => {
@@ -225,10 +335,12 @@ test('missing image falls back to text', async t => {
     const warn = t.mock.method(console, 'warn', () => {});
     const h = bridgeHost({ readImage: async () => { throw new Error('gone'); } });
     await generate(h);
+    redress(h);
+    await generate(h);
     const parts = sentParts(h);
     assert.equal(parts.some(part => part.inlineData), false);
-    assert.match(parts.at(-1).text, /coat description/);
-    assert.deepEqual(h.controller.view().report, { sides: [{ name: 'Alice', images: [], text: ['full'] }] });
+    assert.match(parts.at(-1).text, /clothes Alice: red dress]$/);
+    assert.deepEqual(h.controller.view().report, { sides: [{ name: 'Alice', images: [], text: ['clothes'] }] });
     assert.equal(warn.mock.callCount(), 1);
 });
 

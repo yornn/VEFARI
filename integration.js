@@ -1,15 +1,36 @@
 // VEFARI host adapter. Uses the documented SillyTavern context and event APIs.
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { VERSION, TARGETS, reduceWardrobe, selectWardrobe, selectCollection } from './wardrobe.js';
+import { DEFAULT_INJECT_DEPTH, VERSION, TARGETS, reduceWardrobe, selectWardrobe, selectCollection } from './wardrobe.js';
 import { readSettings, writeSettings } from './storage.js';
 import { PROMPT_KEY, composePrompt, resolveParticipants, wardrobeSnapshot } from './prompt.js';
 import { loadReference } from './images.js';
 import { readGenerator as readGeneratorSettings } from './generator.js';
-import { augmentGeminiBody, isGeneratorTarget, parseGeneratorRequest, planOutfits } from './bridge.js';
+import {
+    augmentGeminiBody, changedTargets, createOutfitMemory, isGeneratorTarget, outfitSignatures, parseGeneratorRequest, planOutfits, sceneText,
+} from './bridge.js';
 import { installInterceptor } from './interceptor.js';
 
 const IN_CHAT = 1;
 const SYSTEM_ROLE = 0;
+export const OUTFITS_MACRO = 'outfits';
+const MACRO_DESCRIPTION = 'VEFARI: what Char and User wear now, one line each (clothes Name: …; hairstyle: …). Empty when nothing is worn.';
+
+/**
+ * Registers a {{name}} macro and returns its removal. SillyTavern has two macro engines:
+ * the newer registry unless the user switched it off, the older parser otherwise.
+ */
+export function registerMacro(context, name, handler, description = '') {
+    const registry = context.macros?.registry;
+    if (typeof registry?.registerMacro === 'function' && context.powerUserSettings?.experimental_macro_engine !== false) {
+        registry.registerMacro(name, { handler: () => handler(), description, category: context.macros.category?.MISC ?? 'misc' });
+        return () => registry.unregisterMacro?.(name);
+    }
+    if (typeof context.registerMacro === 'function') {
+        context.registerMacro(name, () => handler(), description);
+        return () => context.unregisterMacro?.(name);
+    }
+    return () => {};
+}
 
 export function createController(getContext, {
     readImage = loadReference, reportError = console.error, scope = globalThis, readGenerator = readGeneratorSettings,
@@ -20,6 +41,7 @@ export function createController(getContext, {
     let uninstall = null;
     let report = null;
     let generatorWarned = false;
+    let memory = createOutfitMemory();
 
     function view(target = 'bot') {
         const context = getContext();
@@ -35,17 +57,45 @@ export function createController(getContext, {
         };
     }
 
+    /** Puts the outfit lines into the chat and returns the snapshot they came from (null when unreadable). */
     function inject() {
         const context = getContext();
-        let text = '';
+        let snapshot = null;
+        let depth = DEFAULT_INJECT_DEPTH;
         try {
-            text = composePrompt(wardrobeSnapshot(readSettings(context), resolveParticipants(context)));
+            const state = readSettings(context);
+            snapshot = wardrobeSnapshot(state, resolveParticipants(context));
+            depth = state.injectDepth;
         } catch (error) {
             // Bad settings must not leave another character's old instruction active.
             reportError(error);
         }
-        context.setExtensionPrompt(PROMPT_KEY, text, IN_CHAT, 0, false, SYSTEM_ROLE);
-        return text;
+        context.setExtensionPrompt(PROMPT_KEY, composePrompt(snapshot), IN_CHAT, depth, false, SYSTEM_ROLE);
+        return snapshot;
+    }
+
+    // A reply is generated with the outfit lines in the chat: image prompts written from it already know them.
+    // Dry runs and other extensions' quiet requests write no reply.
+    function generationStarted(type, _params, dryRun) {
+        const snapshot = inject();
+        if (!dryRun && type !== 'quiet') memory.sawWriter(outfitSignatures(snapshot));
+    }
+
+    function chatChanged() {
+        memory.sawWriter(null);
+        refresh();
+    }
+
+    // {{outfits}}: the same lines on demand, for the generator's prompt model (its OOC field or instruction).
+    function outfitsMacro() {
+        try {
+            const { snapshot } = view();
+            memory.sawWriter(outfitSignatures(snapshot));
+            return composePrompt(snapshot);
+        } catch (error) {
+            reportError(error);
+            return '';
+        }
     }
 
     function notify() {
@@ -79,8 +129,18 @@ export function createController(getContext, {
         const parsed = parseGeneratorRequest(request, generator);
         if (!parsed) return null;
         const { state, snapshot } = view();
-        const plan = planOutfits({ snapshot, promptText: parsed.promptText, generator, settings: state });
-        if (!plan.sides.length) return null;
+        if (!snapshot) return null;
+        const current = outfitSignatures(snapshot);
+        const targets = changedTargets(current, memory.baseline(sceneText(parsed.promptText), current));
+        const plan = planOutfits({ snapshot, promptText: parsed.promptText, generator, settings: state, targets });
+        if (!plan.sides.length) {
+            // The prompt already describes what they wear, or those who changed are not in the picture.
+            if (snapshot.enabled) {
+                report = { sides: [], changed: targets.length > 0 };
+                notify();
+            }
+            return null;
+        }
         // The same garment may be worn by both participants; load its file once.
         const wanted = [...new Map(plan.sides.flatMap(side => side.imageItems).map(item => [item.id, item])).values()];
         const loaded = await Promise.allSettled(wanted.map(item => readImage(item.imagePath)));
@@ -116,15 +176,21 @@ export function createController(getContext, {
         const types = eventTypes || event_types;
         const routes = {
             APP_READY: refresh,
-            CHAT_CHANGED: refresh,
-            GENERATION_STARTED: inject,
-            GENERATION_AFTER_COMMANDS: inject,
+            CHAT_CHANGED: chatChanged,
+            GENERATION_STARTED: generationStarted,
+            GENERATION_AFTER_COMMANDS: generationStarted,
         };
         for (const [name, callback] of Object.entries(routes)) {
             const event = types?.[name];
             if (event === undefined) continue;
             eventSource.on(event, callback);
             bindings.push(() => eventSource.removeListener(event, callback));
+        }
+        try {
+            bindings.push(registerMacro(getContext(), OUTFITS_MACRO, outfitsMacro, MACRO_DESCRIPTION));
+        } catch (error) {
+            // Without the macro the chat line and the change notes still work.
+            reportError(error);
         }
         uninstall = installInterceptor(scope, { accepts: acceptsRequest, transform: transformRequest }, reportError);
         connected = true;
@@ -137,7 +203,8 @@ export function createController(getContext, {
         uninstall = null;
         connected = false;
         listeners.clear();
-        getContext().setExtensionPrompt(PROMPT_KEY, '', IN_CHAT, 0, false, SYSTEM_ROLE);
+        memory = createOutfitMemory();
+        getContext().setExtensionPrompt(PROMPT_KEY, '', IN_CHAT, DEFAULT_INJECT_DEPTH, false, SYSTEM_ROLE);
     }
 
     const api = Object.freeze({

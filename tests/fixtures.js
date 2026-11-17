@@ -1,7 +1,7 @@
 import { createState, reduceWardrobe } from '../wardrobe.js';
 
 export const owner = { characterKey: 'character:alice.png', target: 'bot' };
-export const garment = (id, category = 'full') => ({ id, category, name: id, description: `${id} description`, imagePath: '', audiences: ['bot', 'user'] });
+export const garment = (id, category = 'clothes') => ({ id, category, name: id, description: `${id} description`, imagePath: '', audiences: ['bot', 'user'] });
 
 export function inventory(...items) {
     return items.reduce((state, item) => reduceWardrobe(state, { type: 'add-item', item }), createState());
